@@ -19,3 +19,25 @@ Initial backend foundation for an inventory management system supporting:
 - `items.unit_cost` is stored in the schema, but it must only be returned by the API for `ADMIN`, `CFO`, and `PROCUREMENT_MANAGER`.
 - The auth middleware in this scaffold reads request context from headers so the API surface can be built before the final authentication provider is chosen.
 - Everything is container-ready: configuration is env-driven and no deployment vendor assumptions are hard-coded.
+
+## Seed Data
+
+Run the baseline seed after the schema:
+
+```powershell
+psql "YOUR_DATABASE_URL" -f database/seeds/001_baseline_roles_and_users.sql
+```
+
+Useful seeded user IDs for header-based local testing:
+
+- `ADMIN`: `10000000-0000-0000-0000-000000000001`
+- `CFO`: `10000000-0000-0000-0000-000000000002`
+- `PROCUREMENT_MANAGER`: `10000000-0000-0000-0000-000000000003`
+- `WAREHOUSE`: `10000000-0000-0000-0000-000000000004`
+- `PRODUCTION_MANAGER`: `10000000-0000-0000-0000-000000000005`
+
+Useful seeded master data:
+
+- Supplier: `40000000-0000-0000-0000-000000000001` (`SUP-DEMO`)
+- Receiving location: `50000000-0000-0000-0000-000000000001` (`RCV-01`)
+- Storage location: `50000000-0000-0000-0000-000000000002` (`STOR-01`)
