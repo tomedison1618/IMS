@@ -41,3 +41,13 @@ Useful seeded master data:
 - Supplier: `40000000-0000-0000-0000-000000000001` (`SUP-DEMO`)
 - Receiving location: `50000000-0000-0000-0000-000000000001` (`RCV-01`)
 - Storage location: `50000000-0000-0000-0000-000000000002` (`STOR-01`)
+
+## Demo Smoke Test
+
+Once the API is running and the seed data is loaded, you can exercise the core inbound, outbound, inventory-control, and manufacturing flows with:
+
+```powershell
+.\scripts\demo-smoke-test.ps1
+```
+
+The script uses unique SKUs and codes on each run, so it is safe to rerun against the same local database.

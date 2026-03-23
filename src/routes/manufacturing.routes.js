@@ -1,19 +1,30 @@
 import { Router } from 'express';
 import { ROLES } from '../constants/roles.js';
-import { notImplemented } from '../controllers/notImplemented.controller.js';
+import {
+  createProductionOrderHandler,
+  createScrapRequestHandler,
+  getProductionOrderHandler,
+  listProductionOrdersHandler,
+  listScrapRequestsHandler,
+  previewBackflushHandler,
+  recordProductionCompletionHandler,
+  runBackflushHandler,
+  signScrapProductionHandler,
+  signScrapWarehouseHandler
+} from '../controllers/manufacturing.controller.js';
 import { authorize } from '../middleware/authorize.js';
 
 const router = Router();
 
-router.get('/production-orders', authorize(ROLES.ADMIN, ROLES.PRODUCTION_MANAGER), notImplemented('List production orders'));
-router.post('/production-orders', authorize(ROLES.ADMIN, ROLES.PRODUCTION_MANAGER), notImplemented('Create production order'));
-router.get('/production-orders/:productionOrderId', authorize(ROLES.ADMIN, ROLES.PRODUCTION_MANAGER), notImplemented('Get production order'));
-router.post('/production-orders/:productionOrderId/completions', authorize(ROLES.ADMIN, ROLES.PRODUCTION_MANAGER), notImplemented('Record production completion'));
-router.get('/production-orders/:productionOrderId/backflush-preview', authorize(ROLES.ADMIN, ROLES.PRODUCTION_MANAGER), notImplemented('Preview backflush explosion'));
-router.post('/production-orders/:productionOrderId/backflush', authorize(ROLES.ADMIN, ROLES.PRODUCTION_MANAGER), notImplemented('Run backflush'));
-router.get('/scrap-requests', authorize(ROLES.ADMIN, ROLES.PRODUCTION_MANAGER, ROLES.WAREHOUSE), notImplemented('List scrap requests'));
-router.post('/scrap-requests', authorize(ROLES.ADMIN, ROLES.PRODUCTION_MANAGER), notImplemented('Create scrap request'));
-router.post('/scrap-requests/:scrapRequestId/sign-production', authorize(ROLES.ADMIN, ROLES.PRODUCTION_MANAGER), notImplemented('Production sign-off on scrap'));
-router.post('/scrap-requests/:scrapRequestId/sign-warehouse', authorize(ROLES.ADMIN, ROLES.WAREHOUSE), notImplemented('Warehouse sign-off on scrap'));
+router.get('/production-orders', authorize(ROLES.ADMIN, ROLES.PRODUCTION_MANAGER), listProductionOrdersHandler);
+router.post('/production-orders', authorize(ROLES.ADMIN, ROLES.PRODUCTION_MANAGER), createProductionOrderHandler);
+router.get('/production-orders/:productionOrderId', authorize(ROLES.ADMIN, ROLES.PRODUCTION_MANAGER), getProductionOrderHandler);
+router.post('/production-orders/:productionOrderId/completions', authorize(ROLES.ADMIN, ROLES.PRODUCTION_MANAGER), recordProductionCompletionHandler);
+router.get('/production-orders/:productionOrderId/backflush-preview', authorize(ROLES.ADMIN, ROLES.PRODUCTION_MANAGER), previewBackflushHandler);
+router.post('/production-orders/:productionOrderId/backflush', authorize(ROLES.ADMIN, ROLES.PRODUCTION_MANAGER), runBackflushHandler);
+router.get('/scrap-requests', authorize(ROLES.ADMIN, ROLES.PRODUCTION_MANAGER, ROLES.WAREHOUSE), listScrapRequestsHandler);
+router.post('/scrap-requests', authorize(ROLES.ADMIN, ROLES.PRODUCTION_MANAGER), createScrapRequestHandler);
+router.post('/scrap-requests/:scrapRequestId/sign-production', authorize(ROLES.ADMIN, ROLES.PRODUCTION_MANAGER), signScrapProductionHandler);
+router.post('/scrap-requests/:scrapRequestId/sign-warehouse', authorize(ROLES.ADMIN, ROLES.WAREHOUSE), signScrapWarehouseHandler);
 
 export default router;

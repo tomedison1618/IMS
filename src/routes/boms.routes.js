@@ -1,18 +1,28 @@
 import { Router } from 'express';
 import { ROLES } from '../constants/roles.js';
-import { notImplemented } from '../controllers/notImplemented.controller.js';
+import {
+  activateBomHandler,
+  addBomLineHandler,
+  createBomHandler,
+  deleteBomLineHandler,
+  getBomHandler,
+  listBomsHandler,
+  previewBomExplosionHandler,
+  updateBomHandler,
+  updateBomLineHandler
+} from '../controllers/boms.controller.js';
 import { authorize } from '../middleware/authorize.js';
 
 const router = Router();
 
-router.get('/', authorize(ROLES.ADMIN, ROLES.PRODUCTION_MANAGER), notImplemented('List BoMs'));
-router.post('/', authorize(ROLES.ADMIN, ROLES.PRODUCTION_MANAGER), notImplemented('Create BoM'));
-router.get('/:bomId', authorize(ROLES.ADMIN, ROLES.PRODUCTION_MANAGER), notImplemented('Get BoM'));
-router.patch('/:bomId', authorize(ROLES.ADMIN, ROLES.PRODUCTION_MANAGER), notImplemented('Update BoM'));
-router.post('/:bomId/activate', authorize(ROLES.ADMIN, ROLES.PRODUCTION_MANAGER), notImplemented('Activate BoM version'));
-router.get('/:bomId/explosion', authorize(ROLES.ADMIN, ROLES.PRODUCTION_MANAGER), notImplemented('Preview BoM explosion'));
-router.post('/:bomId/lines', authorize(ROLES.ADMIN, ROLES.PRODUCTION_MANAGER), notImplemented('Create BoM line'));
-router.patch('/:bomId/lines/:lineId', authorize(ROLES.ADMIN, ROLES.PRODUCTION_MANAGER), notImplemented('Update BoM line'));
-router.delete('/:bomId/lines/:lineId', authorize(ROLES.ADMIN, ROLES.PRODUCTION_MANAGER), notImplemented('Delete BoM line'));
+router.get('/', authorize(ROLES.ADMIN, ROLES.PRODUCTION_MANAGER), listBomsHandler);
+router.post('/', authorize(ROLES.ADMIN, ROLES.PRODUCTION_MANAGER), createBomHandler);
+router.get('/:bomId', authorize(ROLES.ADMIN, ROLES.PRODUCTION_MANAGER), getBomHandler);
+router.patch('/:bomId', authorize(ROLES.ADMIN, ROLES.PRODUCTION_MANAGER), updateBomHandler);
+router.post('/:bomId/activate', authorize(ROLES.ADMIN, ROLES.PRODUCTION_MANAGER), activateBomHandler);
+router.get('/:bomId/explosion', authorize(ROLES.ADMIN, ROLES.PRODUCTION_MANAGER), previewBomExplosionHandler);
+router.post('/:bomId/lines', authorize(ROLES.ADMIN, ROLES.PRODUCTION_MANAGER), addBomLineHandler);
+router.patch('/:bomId/lines/:lineId', authorize(ROLES.ADMIN, ROLES.PRODUCTION_MANAGER), updateBomLineHandler);
+router.delete('/:bomId/lines/:lineId', authorize(ROLES.ADMIN, ROLES.PRODUCTION_MANAGER), deleteBomLineHandler);
 
 export default router;

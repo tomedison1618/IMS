@@ -640,15 +640,17 @@ export async function postReceipt({ receiptId, postedBy }) {
     await client.query(
       `
         UPDATE purchase_orders po
-        SET status = CASE
-          WHEN NOT EXISTS (
-            SELECT 1
-            FROM purchase_order_lines pol
-            WHERE pol.purchase_order_id = po.purchase_order_id
-              AND pol.received_qty < pol.ordered_qty
-          ) THEN 'RECEIVED'
-          ELSE 'PARTIALLY_RECEIVED'
-        END,
+        SET status = (
+          CASE
+            WHEN NOT EXISTS (
+              SELECT 1
+              FROM purchase_order_lines pol
+              WHERE pol.purchase_order_id = po.purchase_order_id
+                AND pol.received_qty < pol.ordered_qty
+            ) THEN 'RECEIVED'
+            ELSE 'PARTIALLY_RECEIVED'
+          END
+        )::po_status_enum,
         updated_at = NOW()
         WHERE po.purchase_order_id = $1::uuid
       `,

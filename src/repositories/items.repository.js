@@ -64,20 +64,26 @@ export async function listItems(filters = {}) {
 }
 
 export async function findItemByIdOrSku(itemIdOrSku) {
-  const values = [itemIdOrSku];
-  let where = 'i.internal_sku = $1';
-
   if (isUuid(itemIdOrSku)) {
-    where = '(i.item_id = $1::uuid OR i.internal_sku = $1)';
+    const { rows } = await pool.query(
+      `
+        ${BASE_ITEM_SELECT}
+        WHERE i.item_id = $1::uuid
+        LIMIT 1
+      `,
+      [itemIdOrSku]
+    );
+
+    return rows[0] ?? null;
   }
 
   const { rows } = await pool.query(
     `
       ${BASE_ITEM_SELECT}
-      WHERE ${where}
+      WHERE i.internal_sku = $1
       LIMIT 1
     `,
-    values
+    [itemIdOrSku]
   );
 
   return rows[0] ?? null;
