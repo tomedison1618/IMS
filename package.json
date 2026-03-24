@@ -7,8 +7,13 @@
   "main": "src/server.js",
   "scripts": {
     "dev": "node --watch src/server.js",
+    "dev:api": "node --watch src/server.js",
+    "dev:web": "npm --prefix frontend run dev",
+    "build:web": "npm --prefix frontend run build",
+    "preview:web": "npm --prefix frontend run preview",
     "start": "node src/server.js",
-    "check": "node --check src/server.js"
+    "check": "node --check src/server.js",
+    "check:web": "npm --prefix frontend run build"
   },
   "engines": {
     "node": ">=20.0.0"

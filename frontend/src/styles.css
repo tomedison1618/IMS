@@ -1,0 +1,367 @@
+:root {
+  font-family: Aptos, "Trebuchet MS", "Segoe UI", sans-serif;
+  color: #f2efe7;
+  background:
+    radial-gradient(circle at top left, rgba(255, 181, 71, 0.18), transparent 28%),
+    radial-gradient(circle at top right, rgba(84, 160, 255, 0.14), transparent 32%),
+    linear-gradient(160deg, #0f1721 0%, #17212d 38%, #1d2c36 100%);
+  --panel: rgba(13, 22, 31, 0.8);
+  --line: rgba(220, 229, 241, 0.12);
+  --muted: #aab7c4;
+  --accent: #f3b741;
+  --accent-strong: #ff8c42;
+  --sea: #7ce0d2;
+  --danger: #ff7d7d;
+  --warning: #ffd166;
+  --success: #8be38b;
+  --shadow: 0 24px 48px rgba(0, 0, 0, 0.28);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+.sidebar {
+  border-right: 1px solid var(--line);
+  background: linear-gradient(180deg, rgba(10, 17, 25, 0.95), rgba(9, 14, 19, 0.88));
+  padding: 28px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.brand__eyebrow,
+.hero__eyebrow {
+  display: inline-block;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 0.74rem;
+  color: var(--accent);
+}
+
+.brand h1,
+.hero h2,
+.panel h2 {
+  margin: 8px 0 10px;
+}
+
+.brand p,
+.hero p,
+.panel__header p,
+.field span,
+.field small,
+.metric span,
+.metric small,
+.session-card__meta small {
+  color: var(--muted);
+}
+
+.nav,
+.stack {
+  display: grid;
+  gap: 10px;
+}
+
+.nav__button {
+  border: 1px solid transparent;
+  border-radius: 16px;
+  padding: 14px 16px;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.02);
+  color: #eef6ff;
+}
+
+.nav__button:hover,
+.nav__button--active {
+  background: rgba(243, 183, 65, 0.12);
+  border-color: rgba(243, 183, 65, 0.35);
+}
+
+.session-card,
+.panel,
+.metric,
+.toast {
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.session-card,
+.panel,
+.toast,
+.detail-card,
+.subpanel {
+  padding: 18px;
+}
+
+.session-card,
+.field,
+.panel,
+.subpanel,
+.metric,
+.toast {
+  display: grid;
+  gap: 14px;
+}
+
+.session-card__chips,
+.button-row,
+.panel__actions,
+.inventory-summary,
+.toggle-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.field input,
+.field select,
+.search {
+  width: 100%;
+  min-height: 48px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: #f5f6f8;
+  padding: 12px 14px;
+}
+
+.field span {
+  display: block;
+}
+
+.button {
+  border: none;
+  border-radius: 16px;
+  padding: 12px 18px;
+  min-height: 48px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  color: #0d1520;
+  font-weight: 700;
+}
+
+.button--secondary {
+  background: linear-gradient(135deg, #89e2cf, #55b6b6);
+}
+
+.button--ghost {
+  background: rgba(255, 255, 255, 0.06);
+  color: #f0f7ff;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.button--block {
+  width: 100%;
+}
+
+.chip,
+.badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 0.78rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.badge--posted,
+.badge--picked,
+.badge--applied,
+.badge--backflushed,
+.badge--completed,
+.badge--approved {
+  background: rgba(139, 227, 139, 0.12);
+  color: var(--success);
+}
+
+.badge--draft,
+.badge--open,
+.badge--allocated,
+.badge--picking {
+  background: rgba(124, 224, 210, 0.12);
+  color: var(--sea);
+}
+
+.badge--discrepancy-recorded,
+.badge--pending {
+  background: rgba(255, 209, 102, 0.12);
+  color: var(--warning);
+}
+
+.content {
+  padding: 28px;
+  display: grid;
+  gap: 22px;
+}
+
+.hero,
+.grid--2,
+.metrics-grid,
+.form-grid {
+  display: grid;
+  gap: 18px;
+}
+
+.hero {
+  grid-template-columns: minmax(0, 1.3fr) minmax(260px, 0.7fr);
+}
+
+.metrics-grid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.grid--2,
+.form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.metric,
+.toast {
+  min-width: 0;
+  align-content: start;
+  overflow: hidden;
+}
+
+.metric span,
+.metric strong,
+.metric small,
+.toast strong,
+.toast span {
+  display: block;
+  min-width: 0;
+}
+
+.metric strong {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.metric--accent strong {
+  color: var(--sea);
+}
+
+.metric--warning strong {
+  color: var(--warning);
+}
+
+.metric--danger strong {
+  color: var(--danger);
+}
+
+.panel__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.hero > div,
+.panel__header > div {
+  min-width: 0;
+}
+
+.session-card__meta {
+  min-width: 0;
+}
+
+.session-card__meta span,
+.session-card__meta small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.subpanel,
+.detail-card,
+.empty-state,
+.pick-summary,
+.inline-note {
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.table-wrap {
+  overflow: auto;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 620px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.data-table th,
+.data-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  text-align: left;
+}
+
+.data-table th {
+  background: rgba(8, 13, 20, 0.95);
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.75rem;
+}
+
+.data-table tbody tr:hover,
+.data-table tbody tr.is-selected {
+  background: rgba(243, 183, 65, 0.08);
+}
+
+@media (max-width: 1180px) {
+  .app-shell,
+  .hero,
+  .metrics-grid,
+  .grid--2,
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+  }
+}
+
+@media (max-width: 768px) {
+  .content,
+  .sidebar {
+    padding: 18px;
+  }
+
+  .metric strong {
+    font-size: 1.7rem;
+  }
+}

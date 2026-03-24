@@ -51,3 +51,36 @@ Once the API is running and the seed data is loaded, you can exercise the core i
 ```
 
 The script uses unique SKUs and codes on each run, so it is safe to rerun against the same local database.
+
+## Frontend
+
+A React operations workbench is included under `frontend/`.
+
+Install frontend dependencies:
+
+```powershell
+cd frontend
+npm install
+```
+
+Run the frontend in development mode:
+
+```powershell
+npm run dev
+```
+
+Keep the backend running in a separate terminal:
+
+```powershell
+cd ..
+npm run dev
+```
+
+Build the frontend for production:
+
+```powershell
+cd ..
+npm run build:web
+```
+
+After the build completes, the Express backend will serve the compiled frontend from `frontend/dist`.
