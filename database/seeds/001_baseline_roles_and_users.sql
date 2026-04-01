@@ -4,24 +4,22 @@
 INSERT INTO roles (role_id, role_code, role_name, description)
 VALUES
     ('20000000-0000-0000-0000-000000000001', 'ADMIN', 'Admin', 'Full system access'),
-    ('20000000-0000-0000-0000-000000000002', 'CFO', 'CFO / Finance', 'Financial visibility and discrepancy approval'),
-    ('20000000-0000-0000-0000-000000000003', 'PROCUREMENT_MANAGER', 'Procurement Manager', 'Purchasing and supplier management'),
-    ('20000000-0000-0000-0000-000000000004', 'WAREHOUSE', 'Warehouse Picker / Receiver', 'Warehouse receiving, picking, and cycle counting'),
-    ('20000000-0000-0000-0000-000000000005', 'PRODUCTION_MANAGER', 'Production Manager', 'BoM and production operations')
-ON CONFLICT (role_code) DO UPDATE
+    ('20000000-0000-0000-0000-000000000002', 'FINANCE', 'Finance', 'Financial visibility and discrepancy approval'),
+    ('20000000-0000-0000-0000-000000000003', 'OPERATIONS', 'Operations', 'Combined procurement, warehouse, and production operations')
+ON CONFLICT (role_id) DO UPDATE
 SET
+    role_code = EXCLUDED.role_code,
     role_name = EXCLUDED.role_name,
     description = EXCLUDED.description;
 
 INSERT INTO users (user_id, email, password_hash, first_name, last_name, status)
 VALUES
     ('10000000-0000-0000-0000-000000000001', 'admin@ims.local', 'TEMP_NO_AUTH_YET', 'System', 'Admin', 'ACTIVE'),
-    ('10000000-0000-0000-0000-000000000002', 'cfo@ims.local', 'TEMP_NO_AUTH_YET', 'Finance', 'Lead', 'ACTIVE'),
-    ('10000000-0000-0000-0000-000000000003', 'procurement@ims.local', 'TEMP_NO_AUTH_YET', 'Procurement', 'Lead', 'ACTIVE'),
-    ('10000000-0000-0000-0000-000000000004', 'warehouse@ims.local', 'TEMP_NO_AUTH_YET', 'Warehouse', 'User', 'ACTIVE'),
-    ('10000000-0000-0000-0000-000000000005', 'production@ims.local', 'TEMP_NO_AUTH_YET', 'Production', 'Lead', 'ACTIVE')
-ON CONFLICT (email) DO UPDATE
+    ('10000000-0000-0000-0000-000000000002', 'finance@ims.local', 'TEMP_NO_AUTH_YET', 'Finance', 'Lead', 'ACTIVE'),
+    ('10000000-0000-0000-0000-000000000003', 'operations@ims.local', 'TEMP_NO_AUTH_YET', 'Operations', 'Lead', 'ACTIVE')
+ON CONFLICT (user_id) DO UPDATE
 SET
+    email = EXCLUDED.email,
     first_name = EXCLUDED.first_name,
     last_name = EXCLUDED.last_name,
     status = EXCLUDED.status;
@@ -30,9 +28,7 @@ INSERT INTO user_roles (user_role_id, user_id, role_id, assigned_at)
 VALUES
     ('30000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', NOW()),
     ('30000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000002', NOW()),
-    ('30000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000003', '20000000-0000-0000-0000-000000000003', NOW()),
-    ('30000000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000004', '20000000-0000-0000-0000-000000000004', NOW()),
-    ('30000000-0000-0000-0000-000000000005', '10000000-0000-0000-0000-000000000005', '20000000-0000-0000-0000-000000000005', NOW())
+    ('30000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000003', '20000000-0000-0000-0000-000000000003', NOW())
 ON CONFLICT (user_id, role_id) DO NOTHING;
 
 INSERT INTO suppliers (

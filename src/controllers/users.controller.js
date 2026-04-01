@@ -7,6 +7,7 @@ import {
   removeRoleFromUser,
   updateUser
 } from '../repositories/users.repository.js';
+import { ROLES } from '../constants/roles.js';
 import { serializeRole, serializeUser } from '../serializers/users.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { requireUserId } from '../utils/authContext.js';
@@ -27,10 +28,12 @@ function normalizeUserStatus(value) {
 
 export const listRolesHandler = asyncHandler(async (_req, res) => {
   const rows = await listRoles();
+  const canonicalRoleCodes = new Set(Object.values(ROLES));
+  const filteredRows = rows.filter((row) => canonicalRoleCodes.has(row.role_code));
 
   res.json({
-    data: rows.map(serializeRole),
-    count: rows.length
+    data: filteredRows.map(serializeRole),
+    count: filteredRows.length
   });
 });
 

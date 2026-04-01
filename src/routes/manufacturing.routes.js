@@ -16,15 +16,15 @@ import { authorize } from '../middleware/authorize.js';
 
 const router = Router();
 
-router.get('/production-orders', authorize(ROLES.ADMIN, ROLES.PRODUCTION_MANAGER), listProductionOrdersHandler);
-router.post('/production-orders', authorize(ROLES.ADMIN, ROLES.PRODUCTION_MANAGER), createProductionOrderHandler);
-router.get('/production-orders/:productionOrderId', authorize(ROLES.ADMIN, ROLES.PRODUCTION_MANAGER), getProductionOrderHandler);
-router.post('/production-orders/:productionOrderId/completions', authorize(ROLES.ADMIN, ROLES.PRODUCTION_MANAGER), recordProductionCompletionHandler);
-router.get('/production-orders/:productionOrderId/backflush-preview', authorize(ROLES.ADMIN, ROLES.PRODUCTION_MANAGER), previewBackflushHandler);
-router.post('/production-orders/:productionOrderId/backflush', authorize(ROLES.ADMIN, ROLES.PRODUCTION_MANAGER), runBackflushHandler);
-router.get('/scrap-requests', authorize(ROLES.ADMIN, ROLES.PRODUCTION_MANAGER, ROLES.WAREHOUSE), listScrapRequestsHandler);
-router.post('/scrap-requests', authorize(ROLES.ADMIN, ROLES.PRODUCTION_MANAGER), createScrapRequestHandler);
-router.post('/scrap-requests/:scrapRequestId/sign-production', authorize(ROLES.ADMIN, ROLES.PRODUCTION_MANAGER), signScrapProductionHandler);
-router.post('/scrap-requests/:scrapRequestId/sign-warehouse', authorize(ROLES.ADMIN, ROLES.WAREHOUSE), signScrapWarehouseHandler);
+router.get('/production-orders', authorize(ROLES.ADMIN, ROLES.OPERATIONS), listProductionOrdersHandler);
+router.post('/production-orders', authorize(ROLES.ADMIN, ROLES.OPERATIONS), createProductionOrderHandler);
+router.get('/production-orders/:productionOrderId', authorize(ROLES.ADMIN, ROLES.OPERATIONS), getProductionOrderHandler);
+router.post('/production-orders/:productionOrderId/completions', authorize(ROLES.ADMIN, ROLES.OPERATIONS), recordProductionCompletionHandler);
+router.get('/production-orders/:productionOrderId/backflush-preview', authorize(ROLES.ADMIN, ROLES.OPERATIONS), previewBackflushHandler);
+router.post('/production-orders/:productionOrderId/backflush', authorize(ROLES.ADMIN, ROLES.OPERATIONS), runBackflushHandler);
+router.get('/scrap-requests', authorize(ROLES.ADMIN, ROLES.OPERATIONS), listScrapRequestsHandler);
+router.post('/scrap-requests', authorize(ROLES.ADMIN, ROLES.OPERATIONS), createScrapRequestHandler);
+router.post('/scrap-requests/:scrapRequestId/sign-production', authorize(ROLES.ADMIN, ROLES.OPERATIONS), signScrapProductionHandler);
+router.post('/scrap-requests/:scrapRequestId/sign-warehouse', authorize(ROLES.ADMIN, ROLES.OPERATIONS), signScrapWarehouseHandler);
 
 export default router;

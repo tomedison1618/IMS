@@ -5,18 +5,19 @@ Initial backend foundation for an inventory management system supporting:
 - Item master with strict financial data silos
 - Multi-level BoMs with PostgreSQL recursive explosion for backflushing
 - Purchasing, receiving, manufacturing, fulfillment, and cycle count workflows
-- Role-based access control for Admin, CFO, Procurement, Warehouse, and Production users
+- Role-based access control for Admin, Finance, and Operations users
 
 ## Structure
 
 - `database/schema/001_ims_mvp.sql`: PostgreSQL schema and indexes
 - `database/queries/backflush_bom_explosion.sql`: recursive CTE for BoM explosion/backflushing
 - `docs/api-endpoints.md`: exact REST API surface for the MVP
+- `docs/USER_MANUAL.md`: English user manual with overview and role workflows
 - `src/`: Node.js / Express backend scaffold
 
 ## Notes
 
-- `items.unit_cost` is stored in the schema, but it must only be returned by the API for `ADMIN`, `CFO`, and `PROCUREMENT_MANAGER`.
+- `items.unit_cost` is stored in the schema, but it must only be returned by the API for `ADMIN` and `FINANCE`.
 - The auth middleware in this scaffold reads request context from headers so the API surface can be built before the final authentication provider is chosen.
 - Everything is container-ready: configuration is env-driven and no deployment vendor assumptions are hard-coded.
 
@@ -31,10 +32,8 @@ psql "YOUR_DATABASE_URL" -f database/seeds/001_baseline_roles_and_users.sql
 Useful seeded user IDs for header-based local testing:
 
 - `ADMIN`: `10000000-0000-0000-0000-000000000001`
-- `CFO`: `10000000-0000-0000-0000-000000000002`
-- `PROCUREMENT_MANAGER`: `10000000-0000-0000-0000-000000000003`
-- `WAREHOUSE`: `10000000-0000-0000-0000-000000000004`
-- `PRODUCTION_MANAGER`: `10000000-0000-0000-0000-000000000005`
+- `FINANCE`: `10000000-0000-0000-0000-000000000002`
+- `OPERATIONS`: `10000000-0000-0000-0000-000000000003`
 
 Useful seeded master data:
 
@@ -55,6 +54,12 @@ The script uses unique SKUs and codes on each run, so it is safe to rerun agains
 ## Frontend
 
 A React operations workbench is included under `frontend/`.
+
+Quick start from the project root:
+
+```bat
+Start-IMS-App.bat
+```
 
 Install frontend dependencies:
 

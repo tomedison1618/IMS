@@ -11,10 +11,10 @@ import { authorize } from '../middleware/authorize.js';
 
 const router = Router();
 
-router.get('/', authorize(ROLES.ADMIN, ROLES.CFO, ROLES.PROCUREMENT_MANAGER, ROLES.WAREHOUSE), listSalesOrdersHandler);
-router.post('/', authorize(ROLES.ADMIN, ROLES.CFO, ROLES.PROCUREMENT_MANAGER), createSalesOrderHandler);
-router.get('/:salesOrderId', authorize(ROLES.ADMIN, ROLES.CFO, ROLES.PROCUREMENT_MANAGER, ROLES.WAREHOUSE), getSalesOrderHandler);
-router.patch('/:salesOrderId', authorize(ROLES.ADMIN, ROLES.CFO, ROLES.PROCUREMENT_MANAGER), updateSalesOrderHandler);
-router.post('/:salesOrderId/allocate', authorize(ROLES.ADMIN, ROLES.WAREHOUSE), allocateSalesOrderHandler);
+router.get('/', authorize(ROLES.ADMIN, ROLES.FINANCE, ROLES.OPERATIONS), listSalesOrdersHandler);
+router.post('/', authorize(ROLES.ADMIN, ROLES.FINANCE, ROLES.OPERATIONS), createSalesOrderHandler);
+router.get('/:salesOrderId', authorize(ROLES.ADMIN, ROLES.FINANCE, ROLES.OPERATIONS), getSalesOrderHandler);
+router.patch('/:salesOrderId', authorize(ROLES.ADMIN, ROLES.FINANCE, ROLES.OPERATIONS), updateSalesOrderHandler);
+router.post('/:salesOrderId/allocate', authorize(ROLES.ADMIN, ROLES.OPERATIONS), allocateSalesOrderHandler);
 
 export default router;

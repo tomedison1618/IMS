@@ -13,12 +13,12 @@ import { authorize } from '../middleware/authorize.js';
 
 const router = Router();
 
-router.get('/', authorize(ROLES.ADMIN, ROLES.CFO, ROLES.PROCUREMENT_MANAGER), listPurchaseOrdersHandler);
-router.post('/', authorize(ROLES.ADMIN, ROLES.PROCUREMENT_MANAGER), createPurchaseOrderHandler);
-router.get('/:purchaseOrderId', authorize(ROLES.ADMIN, ROLES.CFO, ROLES.PROCUREMENT_MANAGER, ROLES.WAREHOUSE), getPurchaseOrderHandler);
-router.patch('/:purchaseOrderId', authorize(ROLES.ADMIN, ROLES.PROCUREMENT_MANAGER), updatePurchaseOrderHandler);
-router.post('/:purchaseOrderId/approve', authorize(ROLES.ADMIN, ROLES.PROCUREMENT_MANAGER), approvePurchaseOrderHandler);
-router.post('/:purchaseOrderId/lines', authorize(ROLES.ADMIN, ROLES.PROCUREMENT_MANAGER), addPurchaseOrderLineHandler);
-router.patch('/:purchaseOrderId/lines/:lineId', authorize(ROLES.ADMIN, ROLES.PROCUREMENT_MANAGER), updatePurchaseOrderLineHandler);
+router.get('/', authorize(ROLES.ADMIN, ROLES.FINANCE, ROLES.OPERATIONS), listPurchaseOrdersHandler);
+router.post('/', authorize(ROLES.ADMIN, ROLES.OPERATIONS), createPurchaseOrderHandler);
+router.get('/:purchaseOrderId', authorize(ROLES.ADMIN, ROLES.FINANCE, ROLES.OPERATIONS), getPurchaseOrderHandler);
+router.patch('/:purchaseOrderId', authorize(ROLES.ADMIN, ROLES.OPERATIONS), updatePurchaseOrderHandler);
+router.post('/:purchaseOrderId/approve', authorize(ROLES.ADMIN, ROLES.OPERATIONS), approvePurchaseOrderHandler);
+router.post('/:purchaseOrderId/lines', authorize(ROLES.ADMIN, ROLES.OPERATIONS), addPurchaseOrderLineHandler);
+router.patch('/:purchaseOrderId/lines/:lineId', authorize(ROLES.ADMIN, ROLES.OPERATIONS), updatePurchaseOrderLineHandler);
 
 export default router;
