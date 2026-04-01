@@ -1,7 +1,8 @@
-import { confirmPick, createPick } from '../repositories/salesOrders.repository.js';
+import { confirmPick, createPick, getOpenPickBySalesOrderId } from '../repositories/salesOrders.repository.js';
 import { serializePick, serializePickLine, serializeSalesOrder, serializeSalesOrderLine } from '../serializers/salesOrders.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { requireUserId } from '../utils/authContext.js';
+import { createHttpError } from '../utils/httpError.js';
 
 function serializePickDetails(pick) {
   return {
@@ -27,6 +28,20 @@ export const createPickHandler = asyncHandler(async (req, res) => {
     data: {
       pick: serializePickDetails(result.pick),
       salesOrder: serializeSalesOrderDetails(result.salesOrder)
+    }
+  });
+});
+
+export const getOpenPickHandler = asyncHandler(async (req, res) => {
+  const pick = await getOpenPickBySalesOrderId(req.params.salesOrderId);
+
+  if (!pick) {
+    throw createHttpError(404, 'Open pick not found for this sales order.');
+  }
+
+  res.json({
+    data: {
+      pick: serializePickDetails(pick)
     }
   });
 });

@@ -1,5 +1,6 @@
 import {
   createItem,
+  deleteItem,
   findItemByIdOrSku,
   getItemInventorySummary,
   listItems,
@@ -187,6 +188,21 @@ export const updateItemHandler = asyncHandler(async (req, res) => {
   const payload = normalizeItemPayload(req.body, req.user.roles, { partial: true });
   const updated = await updateItem(existing.item_id, mapItemChanges(payload));
   res.json({ data: serializeItem(updated, req.user.roles) });
+});
+
+export const deleteItemHandler = asyncHandler(async (req, res) => {
+  const deleted = await deleteItem(req.params.itemId);
+
+  if (!deleted) {
+    throw createHttpError(404, 'Item not found.');
+  }
+
+  res.json({
+    data: {
+      item: serializeItem(deleted, req.user.roles),
+      deleted: true
+    }
+  });
 });
 
 export const getItemInventoryHandler = asyncHandler(async (req, res) => {

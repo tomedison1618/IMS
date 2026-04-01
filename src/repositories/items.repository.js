@@ -176,6 +176,75 @@ export async function updateItemBarcode(itemId, barcodeValue, barcodeType) {
   return rows[0] ?? null;
 }
 
+export async function deleteItem(itemId) {
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    const { rows } = await client.query(
+      `
+        ${BASE_ITEM_SELECT}
+        WHERE i.item_id = $1::uuid
+        LIMIT 1
+      `,
+      [itemId]
+    );
+
+    const item = rows[0] ?? null;
+
+    if (!item) {
+      return null;
+    }
+
+    if (item.is_active) {
+      throw Object.assign(new Error('Only archived items can be deleted.'), { statusCode: 409 });
+    }
+
+    const referenceChecks = [
+      ['inventory balances', 'SELECT 1 FROM inventory_balances WHERE item_id = $1::uuid LIMIT 1'],
+      ['inventory transactions', 'SELECT 1 FROM inventory_transactions WHERE item_id = $1::uuid LIMIT 1'],
+      ['inventory lots', 'SELECT 1 FROM inventory_lots WHERE item_id = $1::uuid LIMIT 1'],
+      ['inventory serials', 'SELECT 1 FROM inventory_serials WHERE item_id = $1::uuid LIMIT 1'],
+      ['reorder alerts', 'SELECT 1 FROM reorder_alerts WHERE item_id = $1::uuid LIMIT 1'],
+      ['BoMs', 'SELECT 1 FROM boms WHERE parent_item_id = $1::uuid LIMIT 1'],
+      ['BoM lines', 'SELECT 1 FROM bom_lines WHERE component_item_id = $1::uuid LIMIT 1'],
+      ['purchase order lines', 'SELECT 1 FROM purchase_order_lines WHERE item_id = $1::uuid LIMIT 1'],
+      ['receipt lines', 'SELECT 1 FROM receipt_lines WHERE item_id = $1::uuid LIMIT 1'],
+      ['production orders', 'SELECT 1 FROM production_orders WHERE finished_good_item_id = $1::uuid LIMIT 1'],
+      ['backflush run lines', 'SELECT 1 FROM backflush_run_lines WHERE item_id = $1::uuid LIMIT 1'],
+      ['scrap requests', 'SELECT 1 FROM scrap_requests WHERE item_id = $1::uuid LIMIT 1'],
+      ['sales order lines', 'SELECT 1 FROM sales_order_lines WHERE item_id = $1::uuid LIMIT 1'],
+      ['pick lines', 'SELECT 1 FROM pick_lines WHERE item_id = $1::uuid LIMIT 1'],
+      ['cycle count lines', 'SELECT 1 FROM cycle_count_lines WHERE item_id = $1::uuid LIMIT 1']
+    ];
+
+    for (const [label, query] of referenceChecks) {
+      const result = await client.query(query, [itemId]);
+
+      if (result.rowCount > 0) {
+        throw Object.assign(new Error(`Archived item cannot be deleted because it is referenced by ${label}.`), { statusCode: 409 });
+      }
+    }
+
+    await client.query(
+      `
+        DELETE FROM items
+        WHERE item_id = $1::uuid
+      `,
+      [itemId]
+    );
+
+    await client.query('COMMIT');
+    return item;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 export async function getItemInventorySummary(itemIdOrSku) {
   const item = await findItemByIdOrSku(itemIdOrSku);
 

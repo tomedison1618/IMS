@@ -13,7 +13,10 @@
     "preview:web": "npm --prefix frontend run preview",
     "start": "node src/server.js",
     "check": "node --check src/server.js",
-    "check:web": "npm --prefix frontend run build"
+    "check:web": "npm --prefix frontend run build",
+    "test": "node --experimental-test-isolation=none --test tests/api/**/*.test.mjs",
+    "test:smoke": "powershell -ExecutionPolicy Bypass -File .\\scripts\\demo-smoke-test.ps1",
+    "test:full": "npm test && npm run test:smoke"
   },
   "engines": {
     "node": ">=20.0.0"

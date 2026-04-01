@@ -5,11 +5,9 @@ param(
 $ErrorActionPreference = "Stop"
 
 $SeedUsers = @{
-    Admin       = "10000000-0000-0000-0000-000000000001"
-    CFO         = "10000000-0000-0000-0000-000000000002"
-    Procurement = "10000000-0000-0000-0000-000000000003"
-    Warehouse   = "10000000-0000-0000-0000-000000000004"
-    Production  = "10000000-0000-0000-0000-000000000005"
+    Admin      = "10000000-0000-0000-0000-000000000001"
+    Finance    = "10000000-0000-0000-0000-000000000002"
+    Operations = "10000000-0000-0000-0000-000000000003"
 }
 
 $SeedData = @{
@@ -71,7 +69,7 @@ $health = Invoke-RestMethod "$BaseUrl/health"
 Assert-Equal $health.status "ok" "Health check failed"
 
 Write-Host "Creating raw material item..."
-$rawItem = Invoke-Api -Method Post -Path "/api/v1/items" -Headers (New-Headers -Role "PROCUREMENT_MANAGER" -UserId $SeedUsers.Procurement) -Body @{
+$rawItem = Invoke-Api -Method Post -Path "/api/v1/items" -Headers (New-Headers -Role "OPERATIONS" -UserId $SeedUsers.Operations) -Body @{
     internalSku      = "RM-DEMO-$suffix"
     name             = "Demo Raw Component $suffix"
     itemType         = "RAW_MATERIAL"
@@ -79,30 +77,29 @@ $rawItem = Invoke-Api -Method Post -Path "/api/v1/items" -Headers (New-Headers -
     minStockLevel    = 10
     reorderQuantity  = 100
     leadTimeDays     = 5
-    unitCost         = 0.10
 }
 
 Write-Host "Creating purchase order and receiving raw material..."
-$purchaseOrder = Invoke-Api -Method Post -Path "/api/v1/purchase-orders" -Headers (New-Headers -Role "PROCUREMENT_MANAGER" -UserId $SeedUsers.Procurement) -Body @{
+$purchaseOrder = Invoke-Api -Method Post -Path "/api/v1/purchase-orders" -Headers (New-Headers -Role "OPERATIONS" -UserId $SeedUsers.Operations) -Body @{
     supplierId          = $SeedData.SupplierId
     expectedReceiptDate = (Get-Date).AddDays(2).ToString("yyyy-MM-dd")
     notes               = "Smoke test PO $suffix"
 }
 
-$purchaseOrder = Invoke-Api -Method Post -Path "/api/v1/purchase-orders/$($purchaseOrder.data.purchaseOrderId)/lines" -Headers (New-Headers -Role "PROCUREMENT_MANAGER" -UserId $SeedUsers.Procurement) -Body @{
+$purchaseOrder = Invoke-Api -Method Post -Path "/api/v1/purchase-orders/$($purchaseOrder.data.purchaseOrderId)/lines" -Headers (New-Headers -Role "OPERATIONS" -UserId $SeedUsers.Operations) -Body @{
     itemId     = $rawItem.data.itemId
     orderedQty = 100
     unitCost   = 0.10
 }
 
-[void](Invoke-Api -Method Post -Path "/api/v1/purchase-orders/$($purchaseOrder.data.purchaseOrderId)/approve" -Headers (New-Headers -Role "PROCUREMENT_MANAGER" -UserId $SeedUsers.Procurement))
+[void](Invoke-Api -Method Post -Path "/api/v1/purchase-orders/$($purchaseOrder.data.purchaseOrderId)/approve" -Headers (New-Headers -Role "OPERATIONS" -UserId $SeedUsers.Operations))
 
-$receipt = Invoke-Api -Method Post -Path "/api/v1/receipts" -Headers (New-Headers -Role "WAREHOUSE" -UserId $SeedUsers.Warehouse) -Body @{
+$receipt = Invoke-Api -Method Post -Path "/api/v1/receipts" -Headers (New-Headers -Role "OPERATIONS" -UserId $SeedUsers.Operations) -Body @{
     purchaseOrderId = $purchaseOrder.data.purchaseOrderId
     notes           = "Smoke test receipt $suffix"
 }
 
-$receipt = Invoke-Api -Method Post -Path "/api/v1/receipts/$($receipt.data.receiptId)/lines" -Headers (New-Headers -Role "WAREHOUSE" -UserId $SeedUsers.Warehouse) -Body @{
+$receipt = Invoke-Api -Method Post -Path "/api/v1/receipts/$($receipt.data.receiptId)/lines" -Headers (New-Headers -Role "OPERATIONS" -UserId $SeedUsers.Operations) -Body @{
     purchaseOrderLineId = $purchaseOrder.data.lines[0].purchaseOrderLineId
     receivedQty         = 100
     receivingLocationId = $SeedData.ReceivingLocation
@@ -110,20 +107,20 @@ $receipt = Invoke-Api -Method Post -Path "/api/v1/receipts/$($receipt.data.recei
     manualLotNumber     = "LOT-$suffix"
 }
 
-[void](Invoke-Api -Method Post -Path "/api/v1/receipts/$($receipt.data.receiptId)/post" -Headers (New-Headers -Role "WAREHOUSE" -UserId $SeedUsers.Warehouse))
+[void](Invoke-Api -Method Post -Path "/api/v1/receipts/$($receipt.data.receiptId)/post" -Headers (New-Headers -Role "OPERATIONS" -UserId $SeedUsers.Operations))
 
-$rawInventoryAfterReceipt = Invoke-Api -Method Get -Path "/api/v1/items/$($rawItem.data.itemId)/inventory" -Headers (New-Headers -Role "WAREHOUSE" -UserId $SeedUsers.Warehouse)
+$rawInventoryAfterReceipt = Invoke-Api -Method Get -Path "/api/v1/items/$($rawItem.data.itemId)/inventory" -Headers (New-Headers -Role "OPERATIONS" -UserId $SeedUsers.Operations)
 Assert-Equal $rawInventoryAfterReceipt.data.totals.quantityOnHand 100 "Raw inventory after receipt is wrong"
 
 Write-Host "Creating customer and outbound pick flow..."
-$customer = Invoke-Api -Method Post -Path "/api/v1/customers" -Headers (New-Headers -Role "PROCUREMENT_MANAGER" -UserId $SeedUsers.Procurement) -Body @{
+$customer = Invoke-Api -Method Post -Path "/api/v1/customers" -Headers (New-Headers -Role "OPERATIONS" -UserId $SeedUsers.Operations) -Body @{
     customerCode = "CUST-$suffix"
     customerName = "Demo Customer $suffix"
     contactEmail = "customer+$suffix@test.local"
     contactPhone = "555-0400"
 }
 
-$salesOrder = Invoke-Api -Method Post -Path "/api/v1/sales-orders" -Headers (New-Headers -Role "PROCUREMENT_MANAGER" -UserId $SeedUsers.Procurement) -Body @{
+$salesOrder = Invoke-Api -Method Post -Path "/api/v1/sales-orders" -Headers (New-Headers -Role "OPERATIONS" -UserId $SeedUsers.Operations) -Body @{
     customerId        = $customer.data.customerId
     externalReference = "SO-$suffix"
     requestedShipDate = (Get-Date).AddDays(1).ToString("yyyy-MM-dd")
@@ -135,43 +132,43 @@ $salesOrder = Invoke-Api -Method Post -Path "/api/v1/sales-orders" -Headers (New
     )
 }
 
-$allocated = Invoke-Api -Method Post -Path "/api/v1/sales-orders/$($salesOrder.data.salesOrderId)/allocate" -Headers (New-Headers -Role "WAREHOUSE" -UserId $SeedUsers.Warehouse)
-$pick = Invoke-Api -Method Post -Path "/api/v1/fulfillment/sales-orders/$($salesOrder.data.salesOrderId)/picks" -Headers (New-Headers -Role "WAREHOUSE" -UserId $SeedUsers.Warehouse)
-$pickConfirmed = Invoke-Api -Method Post -Path "/api/v1/fulfillment/sales-orders/$($salesOrder.data.salesOrderId)/picks/$($pick.data.pick.pickId)/confirm" -Headers (New-Headers -Role "WAREHOUSE" -UserId $SeedUsers.Warehouse)
-$rawInventoryAfterPick = Invoke-Api -Method Get -Path "/api/v1/items/$($rawItem.data.itemId)/inventory" -Headers (New-Headers -Role "WAREHOUSE" -UserId $SeedUsers.Warehouse)
+$allocated = Invoke-Api -Method Post -Path "/api/v1/sales-orders/$($salesOrder.data.salesOrderId)/allocate" -Headers (New-Headers -Role "OPERATIONS" -UserId $SeedUsers.Operations)
+$pick = Invoke-Api -Method Post -Path "/api/v1/fulfillment/sales-orders/$($salesOrder.data.salesOrderId)/picks" -Headers (New-Headers -Role "OPERATIONS" -UserId $SeedUsers.Operations)
+$pickConfirmed = Invoke-Api -Method Post -Path "/api/v1/fulfillment/sales-orders/$($salesOrder.data.salesOrderId)/picks/$($pick.data.pick.pickId)/confirm" -Headers (New-Headers -Role "OPERATIONS" -UserId $SeedUsers.Operations)
+$rawInventoryAfterPick = Invoke-Api -Method Get -Path "/api/v1/items/$($rawItem.data.itemId)/inventory" -Headers (New-Headers -Role "OPERATIONS" -UserId $SeedUsers.Operations)
 
 Assert-Equal $pickConfirmed.data.salesOrder.status "PICKED" "Sales order did not reach PICKED"
 Assert-Equal $rawInventoryAfterPick.data.totals.quantityOnHand 90 "Raw inventory after pick is wrong"
 
 Write-Host "Running cycle count mismatch and approval..."
-$cycleCount = Invoke-Api -Method Post -Path "/api/v1/cycle-counts" -Headers (New-Headers -Role "WAREHOUSE" -UserId $SeedUsers.Warehouse) -Body @{
+$cycleCount = Invoke-Api -Method Post -Path "/api/v1/cycle-counts" -Headers (New-Headers -Role "OPERATIONS" -UserId $SeedUsers.Operations) -Body @{
     locationId = $SeedData.StorageLocation
     notes      = "Smoke test cycle count $suffix"
 }
 
-$cycleCount = Invoke-Api -Method Post -Path "/api/v1/cycle-counts/$($cycleCount.data.cycleCountId)/lines" -Headers (New-Headers -Role "WAREHOUSE" -UserId $SeedUsers.Warehouse) -Body @{
+$cycleCount = Invoke-Api -Method Post -Path "/api/v1/cycle-counts/$($cycleCount.data.cycleCountId)/lines" -Headers (New-Headers -Role "OPERATIONS" -UserId $SeedUsers.Operations) -Body @{
     itemId     = $rawItem.data.itemId
     lotId      = $rawInventoryAfterPick.data.balances[0].lotId
     countedQty = 85
     notes      = "Found 5 short"
 }
 
-$cycleCount = Invoke-Api -Method Post -Path "/api/v1/cycle-counts/$($cycleCount.data.cycleCountId)/submit" -Headers (New-Headers -Role "WAREHOUSE" -UserId $SeedUsers.Warehouse)
-$tickets = Invoke-Api -Method Get -Path "/api/v1/cycle-counts/discrepancy-tickets" -Headers (New-Headers -Role "CFO" -UserId $SeedUsers.CFO)
+$cycleCount = Invoke-Api -Method Post -Path "/api/v1/cycle-counts/$($cycleCount.data.cycleCountId)/submit" -Headers (New-Headers -Role "OPERATIONS" -UserId $SeedUsers.Operations)
+$tickets = Invoke-Api -Method Get -Path "/api/v1/cycle-counts/discrepancy-tickets" -Headers (New-Headers -Role "FINANCE" -UserId $SeedUsers.Finance)
 $ticket = $tickets.data | Where-Object { $_.cycleCountId -eq $cycleCount.data.cycleCountId } | Select-Object -First 1
 
 if (-not $ticket) {
     throw "No discrepancy ticket was created for cycle count $($cycleCount.data.cycleCountId)."
 }
 
-$ticketApproved = Invoke-Api -Method Post -Path "/api/v1/cycle-counts/discrepancy-tickets/$($ticket.discrepancyTicketId)/approve" -Headers (New-Headers -Role "CFO" -UserId $SeedUsers.CFO)
-$rawInventoryAfterCycleCount = Invoke-Api -Method Get -Path "/api/v1/items/$($rawItem.data.itemId)/inventory" -Headers (New-Headers -Role "WAREHOUSE" -UserId $SeedUsers.Warehouse)
+$ticketApproved = Invoke-Api -Method Post -Path "/api/v1/cycle-counts/discrepancy-tickets/$($ticket.discrepancyTicketId)/approve" -Headers (New-Headers -Role "FINANCE" -UserId $SeedUsers.Finance)
+$rawInventoryAfterCycleCount = Invoke-Api -Method Get -Path "/api/v1/items/$($rawItem.data.itemId)/inventory" -Headers (New-Headers -Role "OPERATIONS" -UserId $SeedUsers.Operations)
 
 Assert-Equal $ticketApproved.data.status "APPLIED" "Discrepancy ticket did not apply"
 Assert-Equal $rawInventoryAfterCycleCount.data.totals.quantityOnHand 85 "Raw inventory after cycle count adjustment is wrong"
 
 Write-Host "Creating finished good, BoM, production order, and backflush..."
-$finishedGood = Invoke-Api -Method Post -Path "/api/v1/items" -Headers (New-Headers -Role "PRODUCTION_MANAGER" -UserId $SeedUsers.Production) -Body @{
+$finishedGood = Invoke-Api -Method Post -Path "/api/v1/items" -Headers (New-Headers -Role "OPERATIONS" -UserId $SeedUsers.Operations) -Body @{
     internalSku      = "FG-DEMO-$suffix"
     name             = "Demo Finished Good $suffix"
     itemType         = "FINISHED_GOOD"
@@ -181,41 +178,41 @@ $finishedGood = Invoke-Api -Method Post -Path "/api/v1/items" -Headers (New-Head
     leadTimeDays     = 2
 }
 
-$bom = Invoke-Api -Method Post -Path "/api/v1/boms" -Headers (New-Headers -Role "PRODUCTION_MANAGER" -UserId $SeedUsers.Production) -Body @{
+$bom = Invoke-Api -Method Post -Path "/api/v1/boms" -Headers (New-Headers -Role "OPERATIONS" -UserId $SeedUsers.Operations) -Body @{
     parentItemId = $finishedGood.data.itemId
     versionName  = "v1.0"
     notes        = "Smoke test BoM"
 }
 
-$bom = Invoke-Api -Method Post -Path "/api/v1/boms/$($bom.data.bomId)/lines" -Headers (New-Headers -Role "PRODUCTION_MANAGER" -UserId $SeedUsers.Production) -Body @{
+$bom = Invoke-Api -Method Post -Path "/api/v1/boms/$($bom.data.bomId)/lines" -Headers (New-Headers -Role "OPERATIONS" -UserId $SeedUsers.Operations) -Body @{
     componentItemId   = $rawItem.data.itemId
     quantity          = 2
     scrapAllowancePct = 0
 }
 
-[void](Invoke-Api -Method Post -Path "/api/v1/boms/$($bom.data.bomId)/activate" -Headers (New-Headers -Role "PRODUCTION_MANAGER" -UserId $SeedUsers.Production))
+[void](Invoke-Api -Method Post -Path "/api/v1/boms/$($bom.data.bomId)/activate" -Headers (New-Headers -Role "OPERATIONS" -UserId $SeedUsers.Operations))
 
-$productionOrder = Invoke-Api -Method Post -Path "/api/v1/manufacturing/production-orders" -Headers (New-Headers -Role "PRODUCTION_MANAGER" -UserId $SeedUsers.Production) -Body @{
+$productionOrder = Invoke-Api -Method Post -Path "/api/v1/manufacturing/production-orders" -Headers (New-Headers -Role "OPERATIONS" -UserId $SeedUsers.Operations) -Body @{
     finishedGoodItemId = $finishedGood.data.itemId
     quantityPlanned    = 5
     externalReference  = "MO-$suffix"
 }
 
-[void](Invoke-Api -Method Post -Path "/api/v1/manufacturing/production-orders/$($productionOrder.data.productionOrderId)/completions" -Headers (New-Headers -Role "PRODUCTION_MANAGER" -UserId $SeedUsers.Production) -Body @{
+[void](Invoke-Api -Method Post -Path "/api/v1/manufacturing/production-orders/$($productionOrder.data.productionOrderId)/completions" -Headers (New-Headers -Role "OPERATIONS" -UserId $SeedUsers.Operations) -Body @{
     quantityCompleted = 5
     locationId        = $SeedData.StorageLocation
 })
 
-$backflush = Invoke-Api -Method Post -Path "/api/v1/manufacturing/production-orders/$($productionOrder.data.productionOrderId)/backflush" -Headers (New-Headers -Role "PRODUCTION_MANAGER" -UserId $SeedUsers.Production)
-$rawInventoryAfterBackflush = Invoke-Api -Method Get -Path "/api/v1/items/$($rawItem.data.itemId)/inventory" -Headers (New-Headers -Role "WAREHOUSE" -UserId $SeedUsers.Warehouse)
-$finishedGoodInventory = Invoke-Api -Method Get -Path "/api/v1/items/$($finishedGood.data.itemId)/inventory" -Headers (New-Headers -Role "PRODUCTION_MANAGER" -UserId $SeedUsers.Production)
+$backflush = Invoke-Api -Method Post -Path "/api/v1/manufacturing/production-orders/$($productionOrder.data.productionOrderId)/backflush" -Headers (New-Headers -Role "OPERATIONS" -UserId $SeedUsers.Operations)
+$rawInventoryAfterBackflush = Invoke-Api -Method Get -Path "/api/v1/items/$($rawItem.data.itemId)/inventory" -Headers (New-Headers -Role "OPERATIONS" -UserId $SeedUsers.Operations)
+$finishedGoodInventory = Invoke-Api -Method Get -Path "/api/v1/items/$($finishedGood.data.itemId)/inventory" -Headers (New-Headers -Role "OPERATIONS" -UserId $SeedUsers.Operations)
 
 Assert-Equal $backflush.data.productionOrder.status "BACKFLUSHED" "Production order did not reach BACKFLUSHED"
 Assert-Equal $rawInventoryAfterBackflush.data.totals.quantityOnHand 75 "Raw inventory after backflush is wrong"
 Assert-Equal $finishedGoodInventory.data.totals.quantityOnHand 5 "Finished good inventory after completion is wrong"
 
 Write-Host "Posting dual-signoff scrap..."
-$scrap = Invoke-Api -Method Post -Path "/api/v1/manufacturing/scrap-requests" -Headers (New-Headers -Role "PRODUCTION_MANAGER" -UserId $SeedUsers.Production) -Body @{
+$scrap = Invoke-Api -Method Post -Path "/api/v1/manufacturing/scrap-requests" -Headers (New-Headers -Role "OPERATIONS" -UserId $SeedUsers.Operations) -Body @{
     productionOrderId = $productionOrder.data.productionOrderId
     itemId            = $rawItem.data.itemId
     locationId        = $SeedData.StorageLocation
@@ -223,10 +220,10 @@ $scrap = Invoke-Api -Method Post -Path "/api/v1/manufacturing/scrap-requests" -H
     reason            = "Smoke test scrap"
 }
 
-$scrapAfterProduction = Invoke-Api -Method Post -Path "/api/v1/manufacturing/scrap-requests/$($scrap.data.scrapRequestId)/sign-production" -Headers (New-Headers -Role "PRODUCTION_MANAGER" -UserId $SeedUsers.Production)
-$rawInventoryBeforeWarehouseScrap = Invoke-Api -Method Get -Path "/api/v1/items/$($rawItem.data.itemId)/inventory" -Headers (New-Headers -Role "WAREHOUSE" -UserId $SeedUsers.Warehouse)
-$scrapAfterWarehouse = Invoke-Api -Method Post -Path "/api/v1/manufacturing/scrap-requests/$($scrap.data.scrapRequestId)/sign-warehouse" -Headers (New-Headers -Role "WAREHOUSE" -UserId $SeedUsers.Warehouse)
-$rawInventoryAfterScrap = Invoke-Api -Method Get -Path "/api/v1/items/$($rawItem.data.itemId)/inventory" -Headers (New-Headers -Role "WAREHOUSE" -UserId $SeedUsers.Warehouse)
+$scrapAfterProduction = Invoke-Api -Method Post -Path "/api/v1/manufacturing/scrap-requests/$($scrap.data.scrapRequestId)/sign-production" -Headers (New-Headers -Role "OPERATIONS" -UserId $SeedUsers.Operations)
+$rawInventoryBeforeWarehouseScrap = Invoke-Api -Method Get -Path "/api/v1/items/$($rawItem.data.itemId)/inventory" -Headers (New-Headers -Role "OPERATIONS" -UserId $SeedUsers.Operations)
+$scrapAfterWarehouse = Invoke-Api -Method Post -Path "/api/v1/manufacturing/scrap-requests/$($scrap.data.scrapRequestId)/sign-warehouse" -Headers (New-Headers -Role "OPERATIONS" -UserId $SeedUsers.Operations)
+$rawInventoryAfterScrap = Invoke-Api -Method Get -Path "/api/v1/items/$($rawItem.data.itemId)/inventory" -Headers (New-Headers -Role "OPERATIONS" -UserId $SeedUsers.Operations)
 
 Assert-Equal $scrapAfterProduction.data.status "APPROVED" "Scrap request should remain approved after production sign-off"
 Assert-Equal $rawInventoryBeforeWarehouseScrap.data.totals.quantityOnHand 75 "Scrap deducted too early before warehouse sign-off"

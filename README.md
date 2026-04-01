@@ -13,6 +13,7 @@ Initial backend foundation for an inventory management system supporting:
 - `database/queries/backflush_bom_explosion.sql`: recursive CTE for BoM explosion/backflushing
 - `docs/api-endpoints.md`: exact REST API surface for the MVP
 - `docs/USER_MANUAL.md`: English user manual with overview and role workflows
+- `docs/IMPROVEMENT_BACKLOG.md`: prioritized product and engineering backlog for the next IMS iterations
 - `src/`: Node.js / Express backend scaffold
 
 ## Notes
@@ -50,6 +51,33 @@ Once the API is running and the seed data is loaded, you can exercise the core i
 ```
 
 The script uses unique SKUs and codes on each run, so it is safe to rerun against the same local database.
+
+## Automated Tests
+
+Fast API contract tests are available with:
+
+```powershell
+npm test
+```
+
+These tests use the built-in Node test runner and cover:
+
+- health and 404 behavior
+- auth-required and RBAC contract checks
+- finance-only `unitCost` enforcement
+- placeholder route behavior for unfinished endpoints
+
+Run the seeded end-to-end workflow with:
+
+```powershell
+npm run test:smoke
+```
+
+Run both in sequence with:
+
+```powershell
+npm run test:full
+```
 
 ## Frontend
 

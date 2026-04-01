@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { createApiClient } from './api.js';
 
 const SEEDED_PERSONAS = [
@@ -13,13 +13,17 @@ const DEFAULT_FORMS = {
   supplier: { supplierCode: '', supplierName: '', contactEmail: '', contactPhone: '', leadTimeDays: '14' },
   customer: { customerCode: '', customerName: '', contactEmail: '', contactPhone: '' },
   item: { internalSku: '', name: '', itemType: 'RAW_MATERIAL', uom: 'EA', minStockLevel: '0', reorderQuantity: '0', leadTimeDays: '0', unitCost: '0' },
+  itemEdit: { internalSku: '', name: '', itemType: 'RAW_MATERIAL', uom: 'EA', supplierSku: '', description: '', minStockLevel: '0', reorderQuantity: '0', leadTimeDays: '0', requiresLotTracking: 'false', requiresSerialTracking: 'false', unitCost: '0' },
   purchaseOrder: { supplierId: '', expectedReceiptDate: '', notes: '' },
   purchaseOrderLine: { itemId: '', orderedQty: '100', unitCost: '0' },
   receipt: { purchaseOrderId: '', notes: '' },
   receiptLine: { receiptId: '', purchaseOrderLineId: '', receivedQty: '100', receivingLocationId: '', putawayLocationId: '', manualLotNumber: '' },
+  receivingScan: { itemScan: '', receivingLocationScan: '', putawayLocationScan: '', receivedQty: '1', lotScan: '', serialNumbers: '' },
   salesOrder: { customerId: '', externalReference: '', requestedShipDate: '', itemId: '', orderedQty: '10' },
+  pickingScan: { itemScan: '', locationScan: '' },
   cycleCount: { locationId: '', notes: '' },
   cycleCountLine: { cycleCountId: '', itemId: '', countedQty: '0', lotId: '' },
+  countScan: { locationScan: '', itemScan: '', lotScan: '', serialScan: '', countedQty: '0' },
   bom: { parentItemId: '', versionName: 'v1.0', notes: '' },
   bomLine: { bomId: '', componentItemId: '', quantity: '1', scrapAllowancePct: '0' },
   bomEdit: { versionName: '', notes: '' },
@@ -43,7 +47,7 @@ const TEXT = {
     'sidebar.language': 'Language',
     'sidebar.refresh': 'Refresh workspace',
     'language.en': 'English',
-    'language.vi': 'Tiếng Việt',
+    'language.vi': 'Vietnamese',
     'toast.status': 'Status',
     'message.ready': 'Ready.',
     'message.workspaceRefreshed': 'Workspace refreshed for {role}.',
@@ -86,6 +90,15 @@ const TEXT = {
     'common.active': 'Active',
     'common.inactive': 'Inactive',
     'common.updated': 'Updated',
+    'common.date': 'Ngày',
+    'common.reference': 'Tham chiếu',
+    'common.createdBy': 'Tạo bởi',
+    'common.lot': 'Lô',
+    'common.serial': 'Sê-ri',
+    'common.yes': 'Có',
+    'common.no': 'Không',
+    'common.yes': 'Yes',
+    'common.no': 'No',
     'common.enterReason': 'Enter reason',
     'common.searchSkuName': 'Search SKU or name',
     'common.selectSupplier': 'Select supplier',
@@ -131,9 +144,60 @@ const TEXT = {
     'master.createCustomer': 'Create customer',
     'master.itemsInventoryTitle': 'Items and Inventory',
     'master.itemsInventoryDescription': 'Inspect stock and generate internal barcodes.',
+    'master.selectItemTitle': 'Select an Item',
+    'master.selectItemDescription': 'Choose an item from the list to inspect balances, transactions, lots, and serials.',
+    'master.activeItems': 'Active Items',
+    'master.archivedItems': 'Archived Items',
+    'master.archiveItem': 'Archive item',
+    'master.restoreItem': 'Restore item',
+    'master.deleteArchivedItem': 'Delete archived item',
+    'master.archiveWarning': 'Archive removes the item from the active list but keeps history.',
+    'master.archivedWarning': 'Archived items can be restored. Admin can permanently delete archived items that have no references.',
+    'master.archiveConfirm': 'Archive the selected item?',
+    'master.restoreConfirm': 'Restore the selected item?',
+    'master.deleteArchivedConfirm': 'Permanently delete the selected archived item?',
     'master.barcode': 'Barcode',
     'master.refreshInventory': 'Refresh inventory',
     'master.generateBarcode': 'Generate barcode',
+    'master.editItem': 'Edit item',
+    'master.saveItem': 'Save item',
+    'master.cancelEdit': 'Cancel edit',
+    'master.itemSettingsTitle': 'Item Settings',
+    'master.itemSettingsDescription': 'Maintain the selected item master data and planning rules.',
+    'master.overviewTab': 'Overview',
+    'master.componentsTab': 'Components',
+    'master.transactionsTab': 'Transactions',
+    'master.lotsTab': 'Lots',
+    'master.serialsTab': 'Serials',
+    'master.editTab': 'Edit',
+    'master.supplierSku': 'Supplier SKU',
+    'master.descriptionLabel': 'Description',
+    'master.lotTracking': 'Lot tracking',
+    'master.serialTracking': 'Serial tracking',
+    'master.trackingRequired': 'Required',
+    'master.trackingNotRequired': 'Not required',
+    'master.componentsTitle': 'Components / BoM',
+    'master.componentsDescription': 'Active component list linked to this finished item or sub-assembly.',
+    'master.activeBomVersion': 'Active BoM',
+    'master.componentCount': 'Components',
+    'master.openBomWorkspace': 'Open BoM workspace',
+    'master.createBomWorkspace': 'Create in BoM workspace',
+    'master.noActiveBomTitle': 'No active BoM linked',
+    'master.noActiveBomDescription': 'This item does not have an active component list yet.',
+    'master.loadingBom': 'Loading active BoM...',
+    'master.restrictedBomDescription': 'BoM details are available to Admin and Operations personas.',
+    'master.balanceBreakdownTitle': 'Balance Breakdown',
+    'master.balanceBreakdownDescription': 'Current balances by location, lot, and serial.',
+    'master.transactionHistoryTitle': 'Transaction History',
+    'master.transactionHistoryDescription': 'Posted inventory movements for the selected item.',
+    'master.lotsTitle': 'Lots',
+    'master.lotsDescription': 'Lot records and current quantity exposure.',
+    'master.serialsTitle': 'Serials',
+    'master.serialsDescription': 'Tracked serial numbers and current warehouse state.',
+    'master.supplierLot': 'Supplier lot',
+    'master.expiration': 'Expiration',
+    'master.locationCount': 'Locations',
+    'master.currentLocation': 'Current location',
     'inbound.purchaseOrdersTitle': 'Purchase Orders',
     'inbound.purchaseOrdersDescription': 'Create, line, and approve procurement orders.',
     'inbound.expectedReceipt': 'Expected receipt',
@@ -150,6 +214,16 @@ const TEXT = {
     'inbound.putawayBin': 'Putaway bin',
     'inbound.manualLot': 'Manual lot',
     'inbound.addReceiptLine': 'Add receipt line',
+    'inbound.scanReceiveTitle': 'Guided Receive',
+    'inbound.scanReceiveDescription': 'Scan item and location values, then add a receipt line with resolved context.',
+    'inbound.itemScan': 'Item scan',
+    'inbound.locationScan': 'Location scan',
+    'inbound.putawayScan': 'Putaway scan',
+    'inbound.serialList': 'Serial list',
+    'inbound.applyScannedReceipt': 'Apply scanned receipt line',
+    'inbound.receiptContext': 'Receipt context',
+    'inbound.poLineMatch': 'PO line match',
+    'inbound.autoReceiptNote': 'If no receipt is selected, the app will create one for the selected PO.',
     'inbound.recentPurchaseOrdersTitle': 'Recent Purchase Orders',
     'inbound.recentPurchaseOrdersDescription': 'Select one to set the receipt context.',
     'inbound.po': 'PO',
@@ -166,6 +240,15 @@ const TEXT = {
     'fulfillment.allocate': 'Allocate',
     'fulfillment.createPick': 'Create pick',
     'fulfillment.confirmPick': 'Confirm pick',
+    'fulfillment.guidedPickTitle': 'Guided Pick',
+    'fulfillment.guidedPickDescription': 'Load the current open pick, scan a location and item, then confirm the pick.',
+    'fulfillment.loadOpenPick': 'Load open pick',
+    'fulfillment.pickLocationScan': 'Pick location scan',
+    'fulfillment.pickItemScan': 'Pick item scan',
+    'fulfillment.confirmGuidedPick': 'Confirm guided pick',
+    'fulfillment.openPickLines': 'Open pick lines',
+    'fulfillment.matchedPickLine': 'Matched pick line',
+    'fulfillment.confirmWholePickNote': 'Confirming the guided pick posts all lines on the open pick.',
     'fulfillment.pickerContextTitle': 'Picker Context',
     'fulfillment.pickerContextDescription': 'Use the Operations persona to stay aligned with permissions.',
     'fulfillment.currentRequestRole': 'Current request role',
@@ -181,6 +264,15 @@ const TEXT = {
     'counts.submitSelectedCount': 'Submit selected count',
     'counts.countedQty': 'Counted qty',
     'counts.addCountLine': 'Add count line',
+    'counts.scanEntryTitle': 'Guided Scan Count',
+    'counts.scanEntryDescription': 'Scan a location, item, lot, or serial and add the count line directly.',
+    'counts.scanLocation': 'Count location scan',
+    'counts.itemScan': 'Count item scan',
+    'counts.lotScan': 'Lot scan',
+    'counts.serialScan': 'Serial scan',
+    'counts.applyScannedCount': 'Apply scanned count line',
+    'counts.autoCountNote': 'If no cycle count is selected, the app will create one for the scanned location.',
+    'counts.countContext': 'Count context',
     'counts.discrepancyApprovalsTitle': 'Discrepancy Approvals',
     'counts.discrepancyApprovalsDescription': 'Finance/Admin only.',
     'counts.count': 'Count',
@@ -287,6 +379,9 @@ const TEXT = {
     'action.supplierCreation': 'supplier creation',
     'action.customerCreation': 'customer creation',
     'action.itemCreation': 'item creation',
+    'action.itemArchive': 'item archive',
+    'action.itemRestore': 'item restore',
+    'action.itemDelete': 'item deletion',
     'action.purchaseOrderCreation': 'purchase order creation',
     'action.purchaseOrderLineAdd': 'purchase order line add',
     'action.purchaseOrderApproval': 'purchase order approval',
@@ -373,6 +468,11 @@ const TEXT = {
     'common.active': 'Đang hiệu lực',
     'common.inactive': 'Không hiệu lực',
     'common.updated': 'Cập nhật',
+    'common.date': 'Date',
+    'common.reference': 'Reference',
+    'common.createdBy': 'Created by',
+    'common.lot': 'Lot',
+    'common.serial': 'Serial',
     'common.enterReason': 'Nhập lý do',
     'common.searchSkuName': 'Tìm mã hàng hoặc tên',
     'common.selectSupplier': 'Chọn nhà cung cấp',
@@ -418,9 +518,60 @@ const TEXT = {
     'master.createCustomer': 'Tạo khách hàng',
     'master.itemsInventoryTitle': 'Mặt hàng và tồn kho',
     'master.itemsInventoryDescription': 'Kiểm tra tồn kho và tạo mã vạch nội bộ.',
+    'master.selectItemTitle': 'Chọn mặt hàng',
+    'master.selectItemDescription': 'Chọn một mặt hàng trong danh sách để xem số dư, giao dịch, lô và sê-ri.',
+    'master.activeItems': 'Mặt hàng đang dùng',
+    'master.archivedItems': 'Mặt hàng lưu trữ',
+    'master.archiveItem': 'Lưu trữ mặt hàng',
+    'master.restoreItem': 'Khôi phục mặt hàng',
+    'master.deleteArchivedItem': 'Xóa mặt hàng lưu trữ',
+    'master.archiveWarning': 'Lưu trữ sẽ đưa mặt hàng ra khỏi danh sách đang dùng nhưng vẫn giữ lịch sử.',
+    'master.archivedWarning': 'Mặt hàng lưu trữ có thể được khôi phục. Quản trị có thể xóa vĩnh viễn nếu mặt hàng không còn tham chiếu.',
+    'master.archiveConfirm': 'Lưu trữ mặt hàng đã chọn?',
+    'master.restoreConfirm': 'Khôi phục mặt hàng đã chọn?',
+    'master.deleteArchivedConfirm': 'Xóa vĩnh viễn mặt hàng lưu trữ đã chọn?',
     'master.barcode': 'Mã vạch',
     'master.refreshInventory': 'Làm mới tồn kho',
     'master.generateBarcode': 'Tạo mã vạch',
+    'master.editItem': 'Sửa mặt hàng',
+    'master.saveItem': 'Lưu mặt hàng',
+    'master.cancelEdit': 'Hủy chỉnh sửa',
+    'master.itemSettingsTitle': 'Thiết lập mặt hàng',
+    'master.itemSettingsDescription': 'Cập nhật dữ liệu gốc và quy tắc hoạch định của mặt hàng đã chọn.',
+    'master.overviewTab': 'Tổng quan',
+    'master.componentsTab': 'Thành phần',
+    'master.transactionsTab': 'Giao dịch',
+    'master.lotsTab': 'Lô',
+    'master.serialsTab': 'Sê-ri',
+    'master.editTab': 'Chỉnh sửa',
+    'master.supplierSku': 'Mã hàng NCC',
+    'master.descriptionLabel': 'Mô tả',
+    'master.lotTracking': 'Theo dõi lô',
+    'master.serialTracking': 'Theo dõi sê-ri',
+    'master.trackingRequired': 'Bắt buộc',
+    'master.trackingNotRequired': 'Không bắt buộc',
+    'master.componentsTitle': 'Thành phần / BoM',
+    'master.componentsDescription': 'Danh sách thành phần đang hiệu lực gắn với thành phẩm hoặc bán thành phẩm này.',
+    'master.activeBomVersion': 'BoM hiệu lực',
+    'master.componentCount': 'Số thành phần',
+    'master.openBomWorkspace': 'Mở khu vực BoM',
+    'master.createBomWorkspace': 'Tạo trong khu vực BoM',
+    'master.noActiveBomTitle': 'Chưa có BoM hiệu lực',
+    'master.noActiveBomDescription': 'Mặt hàng này chưa có danh sách thành phần đang hiệu lực.',
+    'master.loadingBom': 'Đang tải BoM hiệu lực...',
+    'master.restrictedBomDescription': 'Chi tiết BoM chỉ hiển thị cho persona Quản trị và Vận hành.',
+    'master.balanceBreakdownTitle': 'Phân rã số dư',
+    'master.balanceBreakdownDescription': 'Số dư hiện tại theo vị trí, lô và sê-ri.',
+    'master.transactionHistoryTitle': 'Lịch sử giao dịch',
+    'master.transactionHistoryDescription': 'Các biến động tồn kho đã ghi nhận cho mặt hàng đã chọn.',
+    'master.lotsTitle': 'Lô',
+    'master.lotsDescription': 'Hồ sơ lô và lượng tồn hiện tại.',
+    'master.serialsTitle': 'Sê-ri',
+    'master.serialsDescription': 'Số sê-ri được theo dõi và trạng thái hiện tại trong kho.',
+    'master.supplierLot': 'Lô nhà cung cấp',
+    'master.expiration': 'Hạn dùng',
+    'master.locationCount': 'Số vị trí',
+    'master.currentLocation': 'Vị trí hiện tại',
     'inbound.purchaseOrdersTitle': 'Đơn mua hàng',
     'inbound.purchaseOrdersDescription': 'Tạo, thêm dòng và phê duyệt đơn mua.',
     'inbound.expectedReceipt': 'Ngày nhận dự kiến',
@@ -437,6 +588,16 @@ const TEXT = {
     'inbound.putawayBin': 'Ô cất kho',
     'inbound.manualLot': 'Lô nhập tay',
     'inbound.addReceiptLine': 'Thêm dòng phiếu nhập',
+    'inbound.scanReceiveTitle': 'Nhận hàng theo quét',
+    'inbound.scanReceiveDescription': 'Quét mặt hàng và vị trí, sau đó thêm dòng phiếu nhập với ngữ cảnh đã nhận diện.',
+    'inbound.itemScan': 'Quét mặt hàng',
+    'inbound.locationScan': 'Quét vị trí',
+    'inbound.putawayScan': 'Quét vị trí cất kho',
+    'inbound.serialList': 'Danh sách sê-ri',
+    'inbound.applyScannedReceipt': 'Áp dụng dòng nhập đã quét',
+    'inbound.receiptContext': 'Ngữ cảnh phiếu nhập',
+    'inbound.poLineMatch': 'Dòng đơn mua khớp',
+    'inbound.autoReceiptNote': 'Nếu chưa chọn phiếu nhập, ứng dụng sẽ tự tạo một phiếu cho đơn mua đã chọn.',
     'inbound.recentPurchaseOrdersTitle': 'Đơn mua gần đây',
     'inbound.recentPurchaseOrdersDescription': 'Chọn một đơn để đặt ngữ cảnh nhận hàng.',
     'inbound.po': 'Đơn mua',
@@ -453,6 +614,15 @@ const TEXT = {
     'fulfillment.allocate': 'Phân bổ',
     'fulfillment.createPick': 'Tạo phiếu lấy hàng',
     'fulfillment.confirmPick': 'Xác nhận lấy hàng',
+    'fulfillment.guidedPickTitle': 'Lấy hàng theo quét',
+    'fulfillment.guidedPickDescription': 'Tải phiếu lấy hàng đang mở, quét vị trí và mặt hàng, rồi xác nhận lấy hàng.',
+    'fulfillment.loadOpenPick': 'Tải phiếu đang mở',
+    'fulfillment.pickLocationScan': 'Quét vị trí lấy hàng',
+    'fulfillment.pickItemScan': 'Quét mặt hàng lấy',
+    'fulfillment.confirmGuidedPick': 'Xác nhận lấy hàng theo quét',
+    'fulfillment.openPickLines': 'Các dòng phiếu đang mở',
+    'fulfillment.matchedPickLine': 'Dòng phiếu khớp',
+    'fulfillment.confirmWholePickNote': 'Xác nhận lấy hàng theo quét sẽ ghi nhận toàn bộ các dòng của phiếu đang mở.',
     'fulfillment.pickerContextTitle': 'Ngữ cảnh lấy hàng',
     'fulfillment.pickerContextDescription': 'Dùng persona Vận hành để khớp với quyền hiện tại.',
     'fulfillment.currentRequestRole': 'Vai trò yêu cầu hiện tại',
@@ -468,6 +638,15 @@ const TEXT = {
     'counts.submitSelectedCount': 'Gửi phiếu kiểm đã chọn',
     'counts.countedQty': 'SL đếm',
     'counts.addCountLine': 'Thêm dòng kiểm',
+    'counts.scanEntryTitle': 'Kiểm kê theo quét',
+    'counts.scanEntryDescription': 'Quét vị trí, mặt hàng, lô hoặc sê-ri để thêm trực tiếp dòng kiểm kê.',
+    'counts.scanLocation': 'Quét vị trí kiểm kê',
+    'counts.itemScan': 'Quét mặt hàng kiểm kê',
+    'counts.lotScan': 'Quét lô',
+    'counts.serialScan': 'Quét sê-ri',
+    'counts.applyScannedCount': 'Áp dụng dòng kiểm đã quét',
+    'counts.autoCountNote': 'Nếu chưa chọn phiếu kiểm, ứng dụng sẽ tự tạo một phiếu cho vị trí đã quét.',
+    'counts.countContext': 'Ngữ cảnh kiểm kê',
     'counts.discrepancyApprovalsTitle': 'Phê duyệt chênh lệch',
     'counts.discrepancyApprovalsDescription': 'Chỉ dành cho Tài chính/Quản trị.',
     'counts.count': 'Phiếu kiểm',
@@ -540,6 +719,9 @@ const TEXT = {
     'action.supplierCreation': 'tạo nhà cung cấp',
     'action.customerCreation': 'tạo khách hàng',
     'action.itemCreation': 'tạo mặt hàng',
+    'action.itemArchive': 'lưu trữ mặt hàng',
+    'action.itemRestore': 'khôi phục mặt hàng',
+    'action.itemDelete': 'xóa mặt hàng',
     'action.purchaseOrderCreation': 'tạo đơn mua',
     'action.purchaseOrderLineAdd': 'thêm dòng đơn mua',
     'action.purchaseOrderApproval': 'phê duyệt đơn mua',
@@ -666,9 +848,68 @@ function formatNumber(value) {
   return new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(Number(value ?? 0));
 }
 
+function formatSignedNumber(value) {
+  const numeric = Number(value ?? 0);
+  const formatted = formatNumber(Math.abs(numeric));
+  if (numeric > 0) return `+${formatted}`;
+  if (numeric < 0) return `-${formatted}`;
+  return formatted;
+}
+
 function formatDate(value, locale = 'en-US', fallback = 'Not set') {
   if (!value) return fallback;
   return new Intl.DateTimeFormat(locale, { month: 'short', day: '2-digit', year: 'numeric' }).format(new Date(value));
+}
+
+function formatDateTime(value, locale = 'en-US', fallback = 'Not set') {
+  if (!value) return fallback;
+  return new Intl.DateTimeFormat(locale, {
+    month: 'short',
+    day: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(new Date(value));
+}
+
+function buildQueryString(params) {
+  const search = new URLSearchParams();
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      search.set(key, String(value));
+    }
+  });
+
+  return search.toString();
+}
+
+function normalizeScanValue(value) {
+  return String(value ?? '').trim().toUpperCase();
+}
+
+function parseScanList(value) {
+  return String(value ?? '')
+    .split(/[\n,]+/)
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
+function createItemEditForm(item) {
+  return {
+    internalSku: item?.internalSku ?? '',
+    name: item?.name ?? '',
+    itemType: item?.itemType ?? 'RAW_MATERIAL',
+    uom: item?.uom ?? 'EA',
+    supplierSku: item?.supplierSku ?? '',
+    description: item?.description ?? '',
+    minStockLevel: String(item?.minStockLevel ?? 0),
+    reorderQuantity: String(item?.reorderQuantity ?? 0),
+    leadTimeDays: String(item?.leadTimeDays ?? 0),
+    requiresLotTracking: item?.requiresLotTracking ? 'true' : 'false',
+    requiresSerialTracking: item?.requiresSerialTracking ? 'true' : 'false',
+    unitCost: item?.unitCost === undefined ? '0' : String(item.unitCost ?? 0)
+  };
 }
 
 function Badge({ value, t }) {
@@ -705,6 +946,8 @@ export default function App() {
   const t = useMemo(() => createTranslator(language), [language]);
   const [session, setSession] = useState(loadStoredSession);
   const [section, setSection] = useState('overview');
+  const [masterTab, setMasterTab] = useState('inventory');
+  const [itemDetailTab, setItemDetailTab] = useState('overview');
   const [manufacturingTab, setManufacturingTab] = useState('production');
   const [bomWorkspaceMode, setBomWorkspaceMode] = useState('browse');
   const [forms, setForms] = useState(DEFAULT_FORMS);
@@ -712,12 +955,17 @@ export default function App() {
   const [message, setMessage] = useState(() => createTranslator(loadStoredLanguage())('message.ready'));
   const [selected, setSelected] = useState({});
   const [inventoryDetail, setInventoryDetail] = useState(null);
+  const [itemBomState, setItemBomState] = useState({ status: 'idle', bom: null });
+  const [purchaseOrderDetail, setPurchaseOrderDetail] = useState(null);
+  const [salesOrderDetail, setSalesOrderDetail] = useState(null);
+  const [cycleCountDetail, setCycleCountDetail] = useState(null);
   const [bomDetail, setBomDetail] = useState(null);
   const [bomExplosionPreview, setBomExplosionPreview] = useState([]);
   const [backflushPreview, setBackflushPreview] = useState([]);
   const [picksByOrder, setPicksByOrder] = useState({});
   const [itemSearch, setItemSearch] = useState('');
   const [bomLibrarySearch, setBomLibrarySearch] = useState('');
+  const inventoryDetailRef = useRef(null);
   const deferredItemSearch = useDeferredValue(itemSearch);
   const deferredBomLibrarySearch = useDeferredValue(bomLibrarySearch);
   const [data, setData] = useState({
@@ -739,8 +987,11 @@ export default function App() {
   });
   const api = useMemo(() => createApiClient(session), [session]);
   const financeVisible = ['ADMIN', 'FINANCE'].includes(session.role);
+  const adminVisible = session.role === 'ADMIN';
+  const canMaintainItems = ['ADMIN', 'OPERATIONS'].includes(session.role);
   const dateLocale = language === 'vi' ? 'vi-VN' : 'en-US';
   const formatAppDate = (value) => formatDate(value, dateLocale, t('common.notSet'));
+  const formatAppDateTime = (value) => formatDateTime(value, dateLocale, t('common.notSet'));
   const actionLabel = (actionKey) => t(`action.${actionKey}`);
 
   useEffect(() => {
@@ -849,11 +1100,57 @@ export default function App() {
     roles: [DEFAULT_SESSION.role]
   };
   const currentPersona = personas.find((persona) => persona.userId === session.userId) ?? defaultPersona;
+  const findItemByScan = (scanValue) => {
+    const normalized = normalizeScanValue(scanValue);
+    if (!normalized) return null;
+
+    return data.items.find((item) => (
+      [
+        item.itemId,
+        item.internalSku,
+        item.supplierSku,
+        item.barcodeValue
+      ].some((candidate) => normalizeScanValue(candidate) === normalized)
+    )) ?? null;
+  };
+  const findLocationByScan = (scanValue) => {
+    const normalized = normalizeScanValue(scanValue);
+    if (!normalized) return null;
+
+    return data.locations.find((location) => (
+      [
+        location.locationId,
+        location.locationCode,
+        location.barcodeValue
+      ].some((candidate) => normalizeScanValue(candidate) === normalized)
+    )) ?? null;
+  };
+  const findInventoryBalanceByLotScan = (itemId, locationId, scanValue) => {
+    const normalized = normalizeScanValue(scanValue);
+    if (!itemId || !normalized) return null;
+
+    return data.inventory.find((balance) => (
+      balance.itemId === itemId
+      && (!locationId || balance.locationId === locationId)
+      && [balance.lotId, balance.lotNumber].some((candidate) => normalizeScanValue(candidate) === normalized)
+    )) ?? null;
+  };
+  const findInventoryBalanceBySerialScan = (itemId, locationId, scanValue) => {
+    const normalized = normalizeScanValue(scanValue);
+    if (!normalized) return null;
+
+    return data.inventory.find((balance) => (
+      (!itemId || balance.itemId === itemId)
+      && (!locationId || balance.locationId === locationId)
+      && [balance.serialId, balance.serialNumber].some((candidate) => normalizeScanValue(candidate) === normalized)
+    )) ?? null;
+  };
   const filteredItems = useMemo(() => {
     const query = deferredItemSearch.trim().toLowerCase();
-    if (!query) return data.items;
-    return data.items.filter((item) => item.internalSku.toLowerCase().includes(query) || item.name.toLowerCase().includes(query));
-  }, [data.items, deferredItemSearch]);
+    const source = data.items.filter((item) => masterTab === 'inventory' ? item.isActive : !item.isActive);
+    if (!query) return source;
+    return source.filter((item) => item.internalSku.toLowerCase().includes(query) || item.name.toLowerCase().includes(query));
+  }, [data.items, deferredItemSearch, masterTab]);
   const filteredBoms = useMemo(() => {
     const query = deferredBomLibrarySearch.trim().toLowerCase();
     if (!query) return data.boms;
@@ -871,6 +1168,48 @@ export default function App() {
     const bomId = forms.productionOrder.bomId || selected.bomId;
     return data.boms.find((bom) => bom.bomId === bomId) ?? null;
   }, [data.boms, forms.productionOrder.bomId, selected.bomId]);
+  const pickForSelectedOrder = useMemo(() => {
+    return selected.salesOrderId ? (picksByOrder[selected.salesOrderId] ?? null) : null;
+  }, [picksByOrder, selected.salesOrderId]);
+  const activePick = useMemo(() => {
+    return pickForSelectedOrder && ['OPEN', 'IN_PROGRESS'].includes(pickForSelectedOrder.status) ? pickForSelectedOrder : null;
+  }, [pickForSelectedOrder]);
+  const receivingScannedItem = useMemo(() => findItemByScan(forms.receivingScan.itemScan), [data.items, forms.receivingScan.itemScan]);
+  const receivingScannedLocation = useMemo(() => findLocationByScan(forms.receivingScan.receivingLocationScan), [data.locations, forms.receivingScan.receivingLocationScan]);
+  const receivingScannedPutawayLocation = useMemo(() => findLocationByScan(forms.receivingScan.putawayLocationScan), [data.locations, forms.receivingScan.putawayLocationScan]);
+  const receivingMatchedPoLine = useMemo(() => {
+    if (!purchaseOrderDetail?.lines || !receivingScannedItem) {
+      return null;
+    }
+
+    return purchaseOrderDetail.lines.find((line) => (
+      line.itemId === receivingScannedItem.itemId && line.receivedQty < line.orderedQty
+    )) ?? purchaseOrderDetail.lines.find((line) => line.itemId === receivingScannedItem.itemId) ?? null;
+  }, [purchaseOrderDetail, receivingScannedItem]);
+  const receivingSerialNumbers = useMemo(() => parseScanList(forms.receivingScan.serialNumbers), [forms.receivingScan.serialNumbers]);
+  const guidedPickItem = useMemo(() => findItemByScan(forms.pickingScan.itemScan), [data.items, forms.pickingScan.itemScan]);
+  const guidedPickLocation = useMemo(() => findLocationByScan(forms.pickingScan.locationScan), [data.locations, forms.pickingScan.locationScan]);
+  const guidedPickLine = useMemo(() => {
+    if (!activePick || !guidedPickItem || !guidedPickLocation) {
+      return null;
+    }
+
+    return activePick.lines.find((line) => line.itemId === guidedPickItem.itemId && line.locationId === guidedPickLocation.locationId) ?? null;
+  }, [activePick, guidedPickItem, guidedPickLocation]);
+  const countScannedLocation = useMemo(() => {
+    return findLocationByScan(forms.countScan.locationScan) ?? (cycleCountDetail
+      ? data.locations.find((location) => location.locationId === cycleCountDetail.locationId) ?? null
+      : null);
+  }, [cycleCountDetail, data.locations, forms.countScan.locationScan]);
+  const countScannedSerialBalance = useMemo(() => findInventoryBalanceBySerialScan(null, countScannedLocation?.locationId ?? null, forms.countScan.serialScan), [countScannedLocation?.locationId, data.inventory, forms.countScan.serialScan]);
+  const countScannedItem = useMemo(() => {
+    if (countScannedSerialBalance) {
+      return data.items.find((item) => item.itemId === countScannedSerialBalance.itemId) ?? null;
+    }
+
+    return findItemByScan(forms.countScan.itemScan);
+  }, [countScannedSerialBalance, data.items, forms.countScan.itemScan]);
+  const countScannedLotBalance = useMemo(() => findInventoryBalanceByLotScan(countScannedItem?.itemId ?? null, countScannedLocation?.locationId ?? null, forms.countScan.lotScan), [countScannedItem?.itemId, countScannedLocation?.locationId, data.inventory, forms.countScan.lotScan]);
   const selectedBomLine = useMemo(() => {
     return bomDetail?.lines?.find((line) => line.bomLineId === selected.bomLineId) ?? null;
   }, [bomDetail, selected.bomLineId]);
@@ -1011,10 +1350,197 @@ export default function App() {
     };
   }, [api, selected.bomId]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!selected.purchaseOrderId) {
+      setPurchaseOrderDetail(null);
+      return undefined;
+    }
+
+    api.request(`/purchase-orders/${selected.purchaseOrderId}`)
+      .then((response) => {
+        if (!cancelled) {
+          setPurchaseOrderDetail(response.data);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setPurchaseOrderDetail(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [api, selected.purchaseOrderId]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!selected.salesOrderId) {
+      setSalesOrderDetail(null);
+      return undefined;
+    }
+
+    api.request(`/sales-orders/${selected.salesOrderId}`)
+      .then((response) => {
+        if (!cancelled) {
+          setSalesOrderDetail(response.data);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setSalesOrderDetail(null);
+        }
+      });
+
+    api.request(`/fulfillment/sales-orders/${selected.salesOrderId}/picks/open`)
+      .then((response) => {
+        if (!cancelled) {
+          setPicksByOrder((current) => ({ ...current, [selected.salesOrderId]: response.data.pick }));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setPicksByOrder((current) => ({ ...current, [selected.salesOrderId]: null }));
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [api, selected.salesOrderId]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!selected.cycleCountId) {
+      setCycleCountDetail(null);
+      return undefined;
+    }
+
+    api.request(`/cycle-counts/${selected.cycleCountId}`)
+      .then((response) => {
+        if (!cancelled) {
+          setCycleCountDetail(response.data);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setCycleCountDetail(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [api, selected.cycleCountId]);
+
+  useEffect(() => {
+    if (!selected.itemId || !['inventory', 'archived'].includes(masterTab)) {
+      return;
+    }
+
+    const selectedItem = data.items.find((item) => item.itemId === selected.itemId) ?? null;
+    const shouldBeVisible = selectedItem ? (masterTab === 'inventory' ? selectedItem.isActive : !selectedItem.isActive) : false;
+
+    if (!shouldBeVisible) {
+      setSelected((current) => ({ ...current, itemId: undefined }));
+      setInventoryDetail(null);
+    }
+  }, [data.items, masterTab, selected.itemId]);
+
+  useEffect(() => {
+    const item = inventoryDetail?.item;
+
+    setForms((current) => ({
+      ...current,
+      itemEdit: item ? createItemEditForm(item) : DEFAULT_FORMS.itemEdit
+    }));
+  }, [inventoryDetail]);
+
+  useEffect(() => {
+    const itemType = inventoryDetail?.item?.itemType;
+    if (itemDetailTab === 'components' && !['FINISHED_GOOD', 'SUB_ASSEMBLY'].includes(itemType ?? '')) {
+      setItemDetailTab('overview');
+    }
+  }, [inventoryDetail?.item?.itemType, itemDetailTab]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const item = inventoryDetail?.item;
+
+    if (!item || !['FINISHED_GOOD', 'SUB_ASSEMBLY'].includes(item.itemType)) {
+      setItemBomState({ status: 'idle', bom: null });
+      return undefined;
+    }
+
+    if (!canMaintainItems) {
+      setItemBomState({ status: 'restricted', bom: null });
+      return undefined;
+    }
+
+    setItemBomState({ status: 'loading', bom: null });
+
+    api.request(`/boms?${buildQueryString({ parentItemId: item.itemId, activeOnly: true, limit: 1 })}`)
+      .then((response) => {
+        const activeBom = response.data?.[0];
+        if (!activeBom) {
+          if (!cancelled) {
+            setItemBomState({ status: 'empty', bom: null });
+          }
+          return null;
+        }
+
+        return api.request(`/boms/${activeBom.bomId}`)
+          .then((detailResponse) => {
+            if (!cancelled) {
+              setItemBomState({ status: 'ready', bom: detailResponse.data });
+            }
+          });
+      })
+      .catch((error) => {
+        if (cancelled) {
+          return;
+        }
+
+        setItemBomState({ status: error.status === 403 ? 'restricted' : 'empty', bom: null });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [api, canMaintainItems, inventoryDetail?.item?.itemId, inventoryDetail?.item?.itemType]);
+
+  useEffect(() => {
+    if (!inventoryDetail || !inventoryDetailRef.current) {
+      return;
+    }
+
+    if (window.innerWidth >= 1180) {
+      return;
+    }
+
+    inventoryDetailRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [inventoryDetail]);
+
   async function refreshInventory(itemId) {
     if (!itemId) return;
-    const response = await api.request(`/items/${itemId}/inventory`);
-    setInventoryDetail(response.data);
+    const itemFilter = buildQueryString({ itemId, limit: 25 });
+    const [summary, transactions, lots, serials] = await Promise.all([
+      api.request(`/items/${itemId}/inventory`),
+      api.request(`/inventory/transactions?${itemFilter}`),
+      api.request(`/inventory/lots?${itemFilter}`),
+      api.request(`/inventory/serials?${itemFilter}`)
+    ]);
+
+    setInventoryDetail({
+      ...summary.data,
+      transactions: transactions.data,
+      lots: lots.data,
+      serials: serials.data
+    });
   }
 
   async function createSupplier() {
@@ -1062,6 +1588,158 @@ export default function App() {
       api.request('/items', { method: 'POST', body: payload })
     );
     setSelected((current) => ({ ...current, itemId: response.data.itemId }));
+    setMasterTab('inventory');
+  }
+
+  function syncItemState(updatedItem) {
+    setData((current) => ({
+      ...current,
+      items: current.items.map((item) => item.itemId === updatedItem.itemId ? updatedItem : item)
+    }));
+    setInventoryDetail((current) => current && current.item.itemId === updatedItem.itemId
+      ? { ...current, item: { ...current.item, ...updatedItem } }
+      : current);
+    setForms((current) => ({
+      ...current,
+      itemEdit: createItemEditForm(updatedItem)
+    }));
+  }
+
+  async function generateBarcodeForSelectedItem() {
+    if (!selected.itemId) {
+      throw new Error('Select an item first.');
+    }
+
+    const response = await run('barcodeGeneration', () =>
+      api.request(`/items/${selected.itemId}/internal-barcode`, { method: 'POST' })
+    );
+    syncItemState(response.data.item);
+  }
+
+  async function saveSelectedItem() {
+    if (!selected.itemId) {
+      throw new Error('Select an item first.');
+    }
+
+    const payload = {
+      internalSku: forms.itemEdit.internalSku,
+      name: forms.itemEdit.name,
+      itemType: forms.itemEdit.itemType,
+      uom: forms.itemEdit.uom,
+      supplierSku: forms.itemEdit.supplierSku || null,
+      description: forms.itemEdit.description || null,
+      minStockLevel: Number(forms.itemEdit.minStockLevel || 0),
+      reorderQuantity: Number(forms.itemEdit.reorderQuantity || 0),
+      leadTimeDays: Number(forms.itemEdit.leadTimeDays || 0),
+      requiresLotTracking: forms.itemEdit.requiresLotTracking === 'true',
+      requiresSerialTracking: forms.itemEdit.requiresSerialTracking === 'true'
+    };
+
+    if (financeVisible) {
+      payload.unitCost = Number(forms.itemEdit.unitCost || 0);
+    }
+
+    const response = await run('itemUpdate', () =>
+      api.request(`/items/${selected.itemId}`, {
+        method: 'PATCH',
+        body: payload
+      })
+    );
+    syncItemState(response.data);
+    setItemDetailTab('overview');
+  }
+
+  function cancelItemEdit() {
+    setItemDetailTab('overview');
+    setForms((current) => ({
+      ...current,
+      itemEdit: inventoryDetail?.item ? createItemEditForm(inventoryDetail.item) : DEFAULT_FORMS.itemEdit
+    }));
+  }
+
+  function openBomWorkspaceForSelectedItem({ createIfMissing = false } = {}) {
+    if (!inventoryDetail?.item) {
+      return;
+    }
+
+    setSection('manufacturing');
+    setManufacturingTab('bom');
+    setBomWorkspaceMode(createIfMissing ? 'create' : 'browse');
+    setBomExplosionPreview([]);
+    resetBomLineEditor();
+    setSelected((current) => ({
+      ...current,
+      bomId: createIfMissing ? undefined : itemBomState.bom?.bomId,
+      bomLineId: undefined
+    }));
+    setForms((current) => ({
+      ...current,
+      bom: {
+        ...current.bom,
+        parentItemId: inventoryDetail.item.itemId
+      },
+      productionOrder: {
+        ...current.productionOrder,
+        finishedGoodItemId: inventoryDetail.item.itemId,
+        bomId: createIfMissing ? '' : itemBomState.bom?.bomId ?? current.productionOrder.bomId
+      }
+    }));
+  }
+
+  async function archiveSelectedItem() {
+    if (!selected.itemId) {
+      throw new Error('Select an item first.');
+    }
+
+    if (!window.confirm(t('master.archiveConfirm'))) {
+      return;
+    }
+
+    const response = await run('itemArchive', () =>
+      api.request(`/items/${selected.itemId}`, {
+        method: 'PATCH',
+        body: { isActive: false }
+      })
+    );
+    syncItemState(response.data);
+    setMasterTab('archived');
+  }
+
+  async function restoreSelectedItem() {
+    if (!selected.itemId) {
+      throw new Error('Select an item first.');
+    }
+
+    if (!window.confirm(t('master.restoreConfirm'))) {
+      return;
+    }
+
+    const response = await run('itemRestore', () =>
+      api.request(`/items/${selected.itemId}`, {
+        method: 'PATCH',
+        body: { isActive: true }
+      })
+    );
+    syncItemState(response.data);
+    setMasterTab('inventory');
+  }
+
+  async function deleteSelectedArchivedItem() {
+    if (!selected.itemId) {
+      throw new Error('Select an item first.');
+    }
+
+    if (!window.confirm(t('master.deleteArchivedConfirm'))) {
+      return;
+    }
+
+    await run('itemDelete', () => api.request(`/items/${selected.itemId}`, { method: 'DELETE' }));
+    setData((current) => ({
+      ...current,
+      items: current.items.filter((item) => item.itemId !== selected.itemId)
+    }));
+    setSelected((current) => ({ ...current, itemId: undefined }));
+    setInventoryDetail(null);
   }
 
   async function createPurchaseOrder() {
@@ -1076,6 +1754,8 @@ export default function App() {
       })
     );
     setSelected((current) => ({ ...current, purchaseOrderId: response.data.purchaseOrderId }));
+    setPurchaseOrderDetail(response.data);
+    return response.data;
   }
 
   async function addPurchaseOrderLine() {
@@ -1092,10 +1772,14 @@ export default function App() {
     );
     const line = response.data.lines.at(-1);
     updateForm('receiptLine', 'purchaseOrderLineId', line?.purchaseOrderLineId ?? '');
+    setPurchaseOrderDetail(response.data);
+    return response.data;
   }
 
   async function approvePurchaseOrder() {
-    await run('purchaseOrderApproval', () => api.request(`/purchase-orders/${selected.purchaseOrderId}/approve`, { method: 'POST' }));
+    const response = await run('purchaseOrderApproval', () => api.request(`/purchase-orders/${selected.purchaseOrderId}/approve`, { method: 'POST' }));
+    setPurchaseOrderDetail(response.data);
+    return response.data;
   }
 
   async function createReceipt() {
@@ -1109,6 +1793,7 @@ export default function App() {
       })
     );
     setSelected((current) => ({ ...current, receiptId: response.data.receiptId }));
+    return response.data;
   }
 
   async function addReceiptLine() {
@@ -1143,38 +1828,49 @@ export default function App() {
       })
     );
     setSelected((current) => ({ ...current, salesOrderId: response.data.salesOrderId }));
+    setSalesOrderDetail(response.data);
+    return response.data;
   }
 
   async function allocateSalesOrder() {
-    await run('salesOrderAllocation', () => api.request(`/sales-orders/${selected.salesOrderId}/allocate`, { method: 'POST' }));
+    const response = await run('salesOrderAllocation', () => api.request(`/sales-orders/${selected.salesOrderId}/allocate`, { method: 'POST' }));
+    setSalesOrderDetail(response.data);
+    return response.data;
   }
 
   async function createPick() {
     const response = await run('pickCreation', () => api.request(`/fulfillment/sales-orders/${selected.salesOrderId}/picks`, { method: 'POST' }));
     setPicksByOrder((current) => ({ ...current, [selected.salesOrderId]: response.data.pick }));
+    setSalesOrderDetail(response.data.salesOrder);
+    return response.data;
   }
 
   async function confirmPick() {
     const pick = picksByOrder[selected.salesOrderId];
     if (!pick) throw new Error(t('error.createPickFirst'));
-    await run('pickConfirmation', () => api.request(`/fulfillment/sales-orders/${selected.salesOrderId}/picks/${pick.pickId}/confirm`, { method: 'POST' }));
+    const response = await run('pickConfirmation', () => api.request(`/fulfillment/sales-orders/${selected.salesOrderId}/picks/${pick.pickId}/confirm`, { method: 'POST' }));
+    setPicksByOrder((current) => ({ ...current, [selected.salesOrderId]: response.data.pick }));
+    setSalesOrderDetail(response.data.salesOrder);
+    return response.data;
   }
 
-  async function createCycleCount() {
+  async function createCycleCount(override = {}) {
     const response = await run('cycleCountCreation', () =>
       api.request('/cycle-counts', {
         method: 'POST',
         body: {
-          locationId: forms.cycleCount.locationId,
-          notes: forms.cycleCount.notes || null
+          locationId: override.locationId ?? forms.cycleCount.locationId,
+          notes: override.notes ?? (forms.cycleCount.notes || null)
         }
       })
     );
     setSelected((current) => ({ ...current, cycleCountId: response.data.cycleCountId }));
+    setCycleCountDetail(response.data);
+    return response.data;
   }
 
   async function addCycleCountLine() {
-    await run('cycleCountLineAdd', () =>
+    const response = await run('cycleCountLineAdd', () =>
       api.request(`/cycle-counts/${selected.cycleCountId}/lines`, {
         method: 'POST',
         body: {
@@ -1184,10 +1880,120 @@ export default function App() {
         }
       })
     );
+    setCycleCountDetail(response.data);
+    return response.data;
   }
 
   async function submitCycleCount() {
-    await run('cycleCountSubmit', () => api.request(`/cycle-counts/${selected.cycleCountId}/submit`, { method: 'POST' }));
+    const response = await run('cycleCountSubmit', () => api.request(`/cycle-counts/${selected.cycleCountId}/submit`, { method: 'POST' }));
+    setCycleCountDetail(response.data);
+    return response.data;
+  }
+
+  async function applyReceivingScan() {
+    if (!receivingScannedItem) {
+      throw new Error('Scan a valid item barcode or SKU first.');
+    }
+
+    if (!receivingScannedLocation) {
+      throw new Error('Scan a valid receiving location first.');
+    }
+
+    if (selected.purchaseOrderId && purchaseOrderDetail && !receivingMatchedPoLine) {
+      throw new Error('The scanned item does not match a line on the selected purchase order.');
+    }
+
+    if (receivingScannedItem.requiresLotTracking && !forms.receivingScan.lotScan.trim()) {
+      throw new Error('Lot-tracked items require a lot number.');
+    }
+
+    if (receivingScannedItem.requiresSerialTracking) {
+      const receivedQty = Number(forms.receivingScan.receivedQty || 0);
+      if (!Number.isInteger(receivedQty) || receivedQty <= 0) {
+        throw new Error('Serial-tracked receiving requires a whole-number quantity.');
+      }
+
+      if (receivingSerialNumbers.length !== receivedQty) {
+        throw new Error('Serial list count must match received quantity.');
+      }
+    }
+
+    const receiptId = selected.receiptId ?? (await createReceipt())?.receiptId;
+    if (!receiptId) {
+      throw new Error('Select a purchase order before scanning receipt lines.');
+    }
+
+    await run('receiptLineAdd', () =>
+      api.request(`/receipts/${receiptId}/lines`, {
+        method: 'POST',
+        body: {
+          itemId: receivingScannedItem.itemId,
+          purchaseOrderLineId: receivingMatchedPoLine?.purchaseOrderLineId ?? null,
+          receivedQty: Number(forms.receivingScan.receivedQty || 0),
+          receivingLocationId: receivingScannedLocation.locationId,
+          putawayLocationId: receivingScannedPutawayLocation?.locationId ?? null,
+          manualLotNumber: forms.receivingScan.lotScan.trim() || null,
+          serialNumbers: receivingScannedItem.requiresSerialTracking ? receivingSerialNumbers : []
+        }
+      })
+    );
+  }
+
+  async function loadOpenPick() {
+    if (!selected.salesOrderId) {
+      throw new Error('Select a sales order first.');
+    }
+
+    const response = await api.request(`/fulfillment/sales-orders/${selected.salesOrderId}/picks/open`);
+    setPicksByOrder((current) => ({ ...current, [selected.salesOrderId]: response.data.pick }));
+    return response.data.pick;
+  }
+
+  async function confirmGuidedPick() {
+    const pick = activePick ?? await loadOpenPick();
+    if (!pick) {
+      throw new Error('Create a pick before using guided picking.');
+    }
+
+    if (!guidedPickLine) {
+      throw new Error('Scan a location and item that match an open pick line.');
+    }
+
+    await confirmPick();
+  }
+
+  async function applyCountScan() {
+    if (!countScannedLocation) {
+      throw new Error('Scan a valid count location first.');
+    }
+
+    if (cycleCountDetail && countScannedLocation.locationId !== cycleCountDetail.locationId) {
+      throw new Error('The scanned location does not match the selected cycle count.');
+    }
+
+    if (!countScannedItem) {
+      throw new Error('Scan a valid item or serial first.');
+    }
+
+    const cycleCount = selected.cycleCountId
+      ? { cycleCountId: selected.cycleCountId }
+      : await createCycleCount({
+          locationId: countScannedLocation.locationId,
+          notes: forms.cycleCount.notes || null
+        });
+
+    const response = await run('cycleCountLineAdd', () =>
+      api.request(`/cycle-counts/${cycleCount.cycleCountId}/lines`, {
+        method: 'POST',
+        body: {
+          itemId: countScannedItem.internalSku,
+          lotId: countScannedLotBalance?.lotId ?? null,
+          serialId: countScannedSerialBalance?.serialId ?? null,
+          countedQty: Number(forms.countScan.countedQty || 0)
+        }
+      })
+    );
+    setCycleCountDetail(response.data);
   }
 
   async function approveTicket() {
@@ -1442,7 +2248,7 @@ export default function App() {
                 <span>{t('manufacturing.parentFinishedGood')}</span>
                 <select value={forms.bom.parentItemId} onChange={(event) => updateForm('bom', 'parentItemId', event.target.value)}>
                   <option value="">{t('common.selectFg')}</option>
-                  {data.items.filter((item) => item.itemType === 'FINISHED_GOOD').map((item) => <option key={item.itemId} value={item.itemId}>{item.internalSku} - {item.name}</option>)}
+                  {data.items.filter((item) => ['FINISHED_GOOD', 'SUB_ASSEMBLY'].includes(item.itemType)).map((item) => <option key={item.itemId} value={item.itemId}>{item.internalSku} - {item.name}</option>)}
                 </select>
               </label>
               <label className="field"><span>{t('common.version')}</span><input value={forms.bom.versionName} onChange={(event) => updateForm('bom', 'versionName', event.target.value)} /></label>
@@ -1732,7 +2538,432 @@ export default function App() {
 
         {section === 'master' ? (
           <div className="stack">
-            <div className="grid grid--2">
+            <div className="toggle-row toggle-row--flush">
+              <button
+                type="button"
+                className={masterTab === 'inventory' ? 'button' : 'button button--ghost'}
+                onClick={() => setMasterTab('inventory')}
+              >
+                {t('master.activeItems')}
+              </button>
+              <button
+                type="button"
+                className={masterTab === 'item' ? 'button' : 'button button--ghost'}
+                onClick={() => setMasterTab('item')}
+              >
+                {t('master.createItemTitle')}
+              </button>
+              <button
+                type="button"
+                className={masterTab === 'partners' ? 'button' : 'button button--ghost'}
+                onClick={() => setMasterTab('partners')}
+              >
+                {t('master.partnersTitle')}
+              </button>
+              <button
+                type="button"
+                className={masterTab === 'archived' ? 'button' : 'button button--ghost'}
+                onClick={() => setMasterTab('archived')}
+              >
+                {t('master.archivedItems')}
+              </button>
+            </div>
+
+            {masterTab === 'inventory' || masterTab === 'archived' ? (
+              <div className="panel">
+                <div className="panel__header">
+                  <div>
+                    <h2>{masterTab === 'inventory' ? t('master.activeItems') : t('master.archivedItems')}</h2>
+                    <p>{masterTab === 'inventory' ? t('master.archiveWarning') : t('master.archivedWarning')}</p>
+                  </div>
+                  <input className="search" placeholder={t('common.searchSkuName')} value={itemSearch} onChange={(event) => setItemSearch(event.target.value)} />
+                </div>
+                <div className="inventory-shell">
+                  <div className="inventory-shell__list">
+                    <Table
+                      rowKey="itemId"
+                      rows={filteredItems}
+                      selectedId={selected.itemId}
+                      emptyMessage={t('common.noRecords')}
+                      onPick={(row) => {
+                        setSelected((current) => ({ ...current, itemId: row.itemId }));
+                        refreshInventory(row.itemId).catch(() => {});
+                      }}
+                      columns={[
+                        { key: 'internalSku', label: t('common.sku') },
+                        { key: 'name', label: t('common.name') },
+                        { key: 'itemType', label: t('common.type'), render: (row) => t(`itemType.${row.itemType}`) },
+                        { key: 'barcodeValue', label: t('master.barcode') },
+                        { key: 'unitCost', label: t('master.unitCost'), render: (row) => (row.unitCost === undefined ? t('common.restricted') : `$${formatNumber(row.unitCost)}`) }
+                      ]}
+                    />
+                  </div>
+                  {inventoryDetail ? (
+                    <div ref={inventoryDetailRef} className="detail-card stack inventory-shell__detail">
+                      <div className="button-row">
+                        <button type="button" className="button button--secondary" onClick={() => refreshInventory(selected.itemId)}>{t('master.refreshInventory')}</button>
+                        <button type="button" className="button button--ghost" onClick={generateBarcodeForSelectedItem}>{t('master.generateBarcode')}</button>
+                        {canMaintainItems ? (
+                          <button type="button" className={itemDetailTab === 'edit' ? 'button button--secondary' : 'button button--ghost'} onClick={() => setItemDetailTab('edit')}>{t('master.editItem')}</button>
+                        ) : null}
+                        {inventoryDetail.item.isActive ? (
+                          <button type="button" className="button button--ghost" onClick={archiveSelectedItem}>{t('master.archiveItem')}</button>
+                        ) : (
+                          <button type="button" className="button button--ghost" onClick={restoreSelectedItem}>{t('master.restoreItem')}</button>
+                        )}
+                        {!inventoryDetail.item.isActive && adminVisible ? (
+                          <button type="button" className="button button--ghost" onClick={deleteSelectedArchivedItem}>{t('master.deleteArchivedItem')}</button>
+                        ) : null}
+                      </div>
+                      <p className="inline-note"><strong>{inventoryDetail.item.internalSku}</strong> - {inventoryDetail.item.name}</p>
+                      <div className="inventory-summary">
+                        <div className="metric"><span>{t('common.onHand')}</span><strong>{formatNumber(inventoryDetail.totals.quantityOnHand)}</strong></div>
+                        <div className="metric"><span>{t('common.reserved')}</span><strong>{formatNumber(inventoryDetail.totals.quantityReserved)}</strong></div>
+                        <div className="metric metric--accent"><span>{t('common.available')}</span><strong>{formatNumber(inventoryDetail.totals.quantityAvailable)}</strong></div>
+                      </div>
+                      <div className="bom-stat-grid">
+                        <div className="detail-card bom-stat">
+                          <span>{t('master.itemType')}</span>
+                          <strong>{t(`itemType.${inventoryDetail.item.itemType}`)}</strong>
+                          <small>{t('master.uom')}: {inventoryDetail.item.uom}</small>
+                        </div>
+                        <div className="detail-card bom-stat">
+                          <span>{t('master.supplierSku')}</span>
+                          <strong>{inventoryDetail.item.supplierSku || t('common.notSet')}</strong>
+                          <small>{t('master.unitCost')}: {inventoryDetail.item.unitCost === undefined ? t('common.restricted') : `$${formatNumber(inventoryDetail.item.unitCost)}`}</small>
+                        </div>
+                        <div className="detail-card bom-stat">
+                          <span>{t('master.activeBomVersion')}</span>
+                          <strong>{itemBomState.status === 'ready' ? itemBomState.bom.versionName : t('common.notSet')}</strong>
+                          <small>{itemBomState.status === 'ready' ? `${t('master.componentCount')}: ${formatNumber(itemBomState.bom.lineCount ?? itemBomState.bom.lines?.length ?? 0)}` : t('master.componentsDescription')}</small>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="detail-card inventory-shell__placeholder">
+                      <h3>{t('master.selectItemTitle')}</h3>
+                      <p>{t('master.selectItemDescription')}</p>
+                    </div>
+                  )}
+                </div>
+                {inventoryDetail ? (
+                  <div className="subpanel stack inventory-workspace">
+                    <div className="toggle-row">
+                      <button
+                        type="button"
+                        className={itemDetailTab === 'overview' ? 'button' : 'button button--ghost'}
+                        onClick={() => setItemDetailTab('overview')}
+                      >
+                        {t('master.overviewTab')}
+                      </button>
+                      {['FINISHED_GOOD', 'SUB_ASSEMBLY'].includes(inventoryDetail.item.itemType) ? (
+                        <button
+                          type="button"
+                          className={itemDetailTab === 'components' ? 'button' : 'button button--ghost'}
+                          onClick={() => setItemDetailTab('components')}
+                        >
+                          {t('master.componentsTab')}
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        className={itemDetailTab === 'transactions' ? 'button' : 'button button--ghost'}
+                        onClick={() => setItemDetailTab('transactions')}
+                      >
+                        {t('master.transactionsTab')}
+                      </button>
+                      <button
+                        type="button"
+                        className={itemDetailTab === 'lots' ? 'button' : 'button button--ghost'}
+                        onClick={() => setItemDetailTab('lots')}
+                      >
+                        {t('master.lotsTab')}
+                      </button>
+                      <button
+                        type="button"
+                        className={itemDetailTab === 'serials' ? 'button' : 'button button--ghost'}
+                        onClick={() => setItemDetailTab('serials')}
+                      >
+                        {t('master.serialsTab')}
+                      </button>
+                      {canMaintainItems ? (
+                        <button
+                          type="button"
+                          className={itemDetailTab === 'edit' ? 'button' : 'button button--ghost'}
+                          onClick={() => setItemDetailTab('edit')}
+                        >
+                          {t('master.editTab')}
+                        </button>
+                      ) : null}
+                    </div>
+
+                    {itemDetailTab === 'overview' ? (
+                      <div className="stack">
+                        <div className="subpanel">
+                          <div className="panel__header">
+                            <div>
+                              <h2>{t('master.itemSettingsTitle')}</h2>
+                              <p>{t('master.itemSettingsDescription')}</p>
+                            </div>
+                          </div>
+                          <div className="bom-stat-grid">
+                            <div className="detail-card bom-stat">
+                              <span>{t('master.itemType')}</span>
+                              <strong>{t(`itemType.${inventoryDetail.item.itemType}`)}</strong>
+                              <small>{t('master.uom')}: {inventoryDetail.item.uom}</small>
+                            </div>
+                            <div className="detail-card bom-stat">
+                              <span>{t('master.supplierSku')}</span>
+                              <strong>{inventoryDetail.item.supplierSku || t('common.notSet')}</strong>
+                              <small>{t('master.unitCost')}: {inventoryDetail.item.unitCost === undefined ? t('common.restricted') : `$${formatNumber(inventoryDetail.item.unitCost)}`}</small>
+                            </div>
+                            <div className="detail-card bom-stat">
+                              <span>{t('common.quantity')}</span>
+                              <strong>{formatNumber(inventoryDetail.item.minStockLevel)} / {formatNumber(inventoryDetail.item.reorderQuantity)}</strong>
+                              <small>{t('master.minStock')} / {t('master.reorderQty')}</small>
+                            </div>
+                            <div className="detail-card bom-stat">
+                              <span>{t('master.leadTime')}</span>
+                              <strong>{formatNumber(inventoryDetail.item.leadTimeDays)}</strong>
+                              <small>{t('common.date')}: {formatAppDate(inventoryDetail.item.updatedAt ?? inventoryDetail.item.createdAt)}</small>
+                            </div>
+                            <div className="detail-card bom-stat">
+                              <span>{t('master.lotTracking')}</span>
+                              <strong>{inventoryDetail.item.requiresLotTracking ? t('common.yes') : t('common.no')}</strong>
+                              <small>{t('master.serialTracking')}: {inventoryDetail.item.requiresSerialTracking ? t('common.yes') : t('common.no')}</small>
+                            </div>
+                            <div className="detail-card bom-stat">
+                              <span>{t('master.descriptionLabel')}</span>
+                              <strong>{inventoryDetail.item.description || t('common.notSet')}</strong>
+                              <small>{t('common.status')}: {inventoryDetail.item.isActive ? t('common.active') : t('common.inactive')}</small>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="subpanel">
+                          <div className="panel__header">
+                            <div>
+                              <h2>{t('master.balanceBreakdownTitle')}</h2>
+                              <p>{t('master.balanceBreakdownDescription')}</p>
+                            </div>
+                          </div>
+                          <Table
+                            rowKey="inventoryBalanceId"
+                            rows={inventoryDetail.balances}
+                            emptyMessage={t('common.noRecords')}
+                            columns={[
+                              { key: 'locationCode', label: t('overview.locationCode') },
+                              { key: 'lotNumber', label: t('common.lot'), render: (row) => row.lotNumber || t('common.notSet') },
+                              { key: 'serialNumber', label: t('common.serial'), render: (row) => row.serialNumber || t('common.notSet') },
+                              { key: 'quantityOnHand', label: t('common.onHand'), render: (row) => formatNumber(row.quantityOnHand) },
+                              { key: 'quantityReserved', label: t('common.reserved'), render: (row) => formatNumber(row.quantityReserved) },
+                              { key: 'quantityAvailable', label: t('common.available'), render: (row) => formatNumber(row.quantityAvailable) }
+                            ]}
+                          />
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {itemDetailTab === 'components' && ['FINISHED_GOOD', 'SUB_ASSEMBLY'].includes(inventoryDetail.item.itemType) ? (
+                      <div className="subpanel">
+                        <div className="panel__header">
+                          <div>
+                            <h2>{t('master.componentsTitle')}</h2>
+                            <p>{t('master.componentsDescription')}</p>
+                          </div>
+                          {canMaintainItems ? (
+                            <button
+                              type="button"
+                              className="button button--ghost"
+                              disabled={itemBomState.status === 'loading'}
+                              onClick={() => openBomWorkspaceForSelectedItem({ createIfMissing: itemBomState.status !== 'ready' })}
+                            >
+                              {itemBomState.status === 'ready' ? t('master.openBomWorkspace') : t('master.createBomWorkspace')}
+                            </button>
+                          ) : null}
+                        </div>
+                        {itemBomState.status === 'loading' ? (
+                          <div className="detail-card">
+                            <p className="inline-note">{t('master.loadingBom')}</p>
+                          </div>
+                        ) : null}
+                        {itemBomState.status === 'restricted' ? (
+                          <div className="detail-card">
+                            <h3>{t('master.componentsTitle')}</h3>
+                            <p>{t('master.restrictedBomDescription')}</p>
+                          </div>
+                        ) : null}
+                        {itemBomState.status === 'empty' ? (
+                          <div className="detail-card">
+                            <h3>{t('master.noActiveBomTitle')}</h3>
+                            <p>{t('master.noActiveBomDescription')}</p>
+                          </div>
+                        ) : null}
+                        {itemBomState.status === 'ready' ? (
+                          <div className="stack">
+                            <div className="bom-stat-grid">
+                              <div className="detail-card bom-stat">
+                                <span>{t('master.activeBomVersion')}</span>
+                                <strong>{itemBomState.bom.versionName}</strong>
+                                <small>{t('common.status')}: {itemBomState.bom.isActive ? t('common.active') : t('common.inactive')}</small>
+                              </div>
+                              <div className="detail-card bom-stat">
+                                <span>{t('master.componentCount')}</span>
+                                <strong>{formatNumber(itemBomState.bom.lineCount ?? itemBomState.bom.lines?.length ?? 0)}</strong>
+                                <small>{t('manufacturing.bomLinesTitle')}</small>
+                              </div>
+                              <div className="detail-card bom-stat">
+                                <span>{t('common.updated')}</span>
+                                <strong>{formatAppDate(itemBomState.bom.updatedAt ?? itemBomState.bom.createdAt)}</strong>
+                                <small>{t('common.version')}: {itemBomState.bom.versionName}</small>
+                              </div>
+                            </div>
+                            <Table
+                              rowKey="bomLineId"
+                              rows={itemBomState.bom.lines ?? []}
+                              emptyMessage={t('common.noRecords')}
+                              columns={[
+                                { key: 'lineNumber', label: t('manufacturing.lineNumber') },
+                                { key: 'componentInternalSku', label: t('common.sku') },
+                                { key: 'componentItemName', label: t('common.name') },
+                                { key: 'quantity', label: t('common.quantity'), render: (row) => formatNumber(row.quantity) },
+                                { key: 'scrapAllowancePct', label: t('manufacturing.scrapAllowancePct'), render: (row) => formatNumber(row.scrapAllowancePct) }
+                              ]}
+                            />
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
+
+                    {itemDetailTab === 'transactions' ? (
+                      <div className="subpanel">
+                        <div className="panel__header">
+                          <div>
+                            <h2>{t('master.transactionHistoryTitle')}</h2>
+                            <p>{t('master.transactionHistoryDescription')}</p>
+                          </div>
+                        </div>
+                        <Table
+                          rowKey="inventoryTransactionId"
+                          rows={inventoryDetail.transactions ?? []}
+                          emptyMessage={t('common.noRecords')}
+                          columns={[
+                            { key: 'createdAt', label: t('common.date'), render: (row) => formatAppDateTime(row.createdAt) },
+                            { key: 'transactionType', label: t('common.type') },
+                            { key: 'locationCode', label: t('overview.locationCode'), render: (row) => row.locationCode || t('common.notSet') },
+                            { key: 'lotNumber', label: t('common.lot'), render: (row) => row.lotNumber || t('common.notSet') },
+                            { key: 'serialNumber', label: t('common.serial'), render: (row) => row.serialNumber || t('common.notSet') },
+                            { key: 'quantityDelta', label: t('counts.delta'), render: (row) => formatSignedNumber(row.quantityDelta) },
+                            {
+                              key: 'referenceType',
+                              label: t('common.reference'),
+                              render: (row) => (row.referenceId ? `${row.referenceType} ${row.referenceId.slice(0, 8)}` : row.referenceType || t('common.notSet'))
+                            },
+                            { key: 'createdByName', label: t('common.createdBy'), render: (row) => row.createdByName || t('common.notSet') }
+                          ]}
+                        />
+                      </div>
+                    ) : null}
+
+                    {itemDetailTab === 'lots' ? (
+                      <div className="subpanel">
+                        <div className="panel__header">
+                          <div>
+                            <h2>{t('master.lotsTitle')}</h2>
+                            <p>{t('master.lotsDescription')}</p>
+                          </div>
+                        </div>
+                        <Table
+                          rowKey="lotId"
+                          rows={inventoryDetail.lots ?? []}
+                          emptyMessage={t('common.noRecords')}
+                          columns={[
+                            { key: 'lotNumber', label: t('common.lot') },
+                            { key: 'supplierLotNumber', label: t('master.supplierLot'), render: (row) => row.supplierLotNumber || t('common.notSet') },
+                            { key: 'quantityOnHand', label: t('common.onHand'), render: (row) => formatNumber(row.quantityOnHand) },
+                            { key: 'quantityAvailable', label: t('common.available'), render: (row) => formatNumber(row.quantityAvailable) },
+                            { key: 'activeLocationCount', label: t('master.locationCount'), render: (row) => formatNumber(row.activeLocationCount) },
+                            { key: 'expirationDate', label: t('master.expiration'), render: (row) => formatAppDate(row.expirationDate) }
+                          ]}
+                        />
+                      </div>
+                    ) : null}
+
+                    {itemDetailTab === 'serials' ? (
+                      <div className="subpanel">
+                        <div className="panel__header">
+                          <div>
+                            <h2>{t('master.serialsTitle')}</h2>
+                            <p>{t('master.serialsDescription')}</p>
+                          </div>
+                        </div>
+                        <Table
+                          rowKey="serialId"
+                          rows={inventoryDetail.serials ?? []}
+                          emptyMessage={t('common.noRecords')}
+                          columns={[
+                            { key: 'serialNumber', label: t('common.serial') },
+                            { key: 'status', label: t('common.status'), render: (row) => <Badge value={row.status} t={t} /> },
+                            { key: 'currentLocationCode', label: t('master.currentLocation'), render: (row) => row.currentLocationCode || t('common.notSet') },
+                            { key: 'quantityAvailable', label: t('common.available'), render: (row) => formatNumber(row.quantityAvailable) },
+                            { key: 'createdAt', label: t('common.created'), render: (row) => formatAppDate(row.createdAt) }
+                          ]}
+                        />
+                      </div>
+                    ) : null}
+
+                    {itemDetailTab === 'edit' && canMaintainItems ? (
+                      <div className="subpanel">
+                        <div className="panel__header">
+                          <div>
+                            <h2>{t('master.itemSettingsTitle')}</h2>
+                            <p>{t('master.itemSettingsDescription')}</p>
+                          </div>
+                        </div>
+                        <div className="form-grid">
+                          <label className="field"><span>{t('master.internalSku')}</span><input value={forms.itemEdit.internalSku} onChange={(event) => updateForm('itemEdit', 'internalSku', event.target.value)} /></label>
+                          <label className="field"><span>{t('common.name')}</span><input value={forms.itemEdit.name} onChange={(event) => updateForm('itemEdit', 'name', event.target.value)} /></label>
+                          <label className="field">
+                            <span>{t('master.itemType')}</span>
+                            <select value={forms.itemEdit.itemType} onChange={(event) => updateForm('itemEdit', 'itemType', event.target.value)}>
+                              <option value="RAW_MATERIAL">{t('itemType.RAW_MATERIAL')}</option>
+                              <option value="SUB_ASSEMBLY">{t('itemType.SUB_ASSEMBLY')}</option>
+                              <option value="FINISHED_GOOD">{t('itemType.FINISHED_GOOD')}</option>
+                            </select>
+                          </label>
+                          <label className="field"><span>{t('master.uom')}</span><input value={forms.itemEdit.uom} onChange={(event) => updateForm('itemEdit', 'uom', event.target.value)} /></label>
+                          <label className="field"><span>{t('master.supplierSku')}</span><input value={forms.itemEdit.supplierSku} onChange={(event) => updateForm('itemEdit', 'supplierSku', event.target.value)} /></label>
+                          <label className="field"><span>{t('master.unitCost')}</span><input value={financeVisible ? forms.itemEdit.unitCost : t('common.restricted')} disabled={!financeVisible} onChange={(event) => updateForm('itemEdit', 'unitCost', event.target.value)} /></label>
+                          <label className="field"><span>{t('master.minStock')}</span><input value={forms.itemEdit.minStockLevel} onChange={(event) => updateForm('itemEdit', 'minStockLevel', event.target.value)} /></label>
+                          <label className="field"><span>{t('master.reorderQty')}</span><input value={forms.itemEdit.reorderQuantity} onChange={(event) => updateForm('itemEdit', 'reorderQuantity', event.target.value)} /></label>
+                          <label className="field"><span>{t('master.leadTime')}</span><input value={forms.itemEdit.leadTimeDays} onChange={(event) => updateForm('itemEdit', 'leadTimeDays', event.target.value)} /></label>
+                          <label className="field">
+                            <span>{t('master.lotTracking')}</span>
+                            <select value={forms.itemEdit.requiresLotTracking} onChange={(event) => updateForm('itemEdit', 'requiresLotTracking', event.target.value)}>
+                              <option value="false">{t('master.trackingNotRequired')}</option>
+                              <option value="true">{t('master.trackingRequired')}</option>
+                            </select>
+                          </label>
+                          <label className="field">
+                            <span>{t('master.serialTracking')}</span>
+                            <select value={forms.itemEdit.requiresSerialTracking} onChange={(event) => updateForm('itemEdit', 'requiresSerialTracking', event.target.value)}>
+                              <option value="false">{t('master.trackingNotRequired')}</option>
+                              <option value="true">{t('master.trackingRequired')}</option>
+                            </select>
+                          </label>
+                          <label className="field field--full"><span>{t('master.descriptionLabel')}</span><input value={forms.itemEdit.description} onChange={(event) => updateForm('itemEdit', 'description', event.target.value)} /></label>
+                        </div>
+                        <div className="button-row">
+                          <button type="button" className="button" onClick={saveSelectedItem} disabled={!forms.itemEdit.internalSku || !forms.itemEdit.name || !forms.itemEdit.uom}>{t('master.saveItem')}</button>
+                          <button type="button" className="button button--ghost" onClick={cancelItemEdit}>{t('master.cancelEdit')}</button>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+
+            {masterTab === 'item' ? (
               <div className="panel">
                 <div className="panel__header">
                   <div>
@@ -1761,7 +2992,9 @@ export default function App() {
                   <button type="button" className="button" onClick={createItem}>{t('master.createItem')}</button>
                 </div>
               </div>
+            ) : null}
 
+            {masterTab === 'partners' ? (
               <div className="panel">
                 <div className="panel__header">
                   <div>
@@ -1786,47 +3019,7 @@ export default function App() {
                   <button type="button" className="button button--secondary" onClick={createCustomer}>{t('master.createCustomer')}</button>
                 </div>
               </div>
-            </div>
-
-            <div className="panel">
-              <div className="panel__header">
-                <div>
-                  <h2>{t('master.itemsInventoryTitle')}</h2>
-                  <p>{t('master.itemsInventoryDescription')}</p>
-                </div>
-                <input className="search" placeholder={t('common.searchSkuName')} value={itemSearch} onChange={(event) => setItemSearch(event.target.value)} />
-              </div>
-              <Table
-                rowKey="itemId"
-                rows={filteredItems}
-                selectedId={selected.itemId}
-                emptyMessage={t('common.noRecords')}
-                onPick={(row) => {
-                  setSelected((current) => ({ ...current, itemId: row.itemId }));
-                  refreshInventory(row.itemId).catch(() => {});
-                }}
-                columns={[
-                  { key: 'internalSku', label: t('common.sku') },
-                  { key: 'name', label: t('common.name') },
-                  { key: 'itemType', label: t('common.type'), render: (row) => t(`itemType.${row.itemType}`) },
-                  { key: 'barcodeValue', label: t('master.barcode') },
-                  { key: 'unitCost', label: t('master.unitCost'), render: (row) => (row.unitCost === undefined ? t('common.restricted') : `$${formatNumber(row.unitCost)}`) }
-                ]}
-              />
-              {inventoryDetail ? (
-                <div className="detail-card">
-                  <div className="button-row">
-                    <button type="button" className="button button--secondary" onClick={() => refreshInventory(selected.itemId)}>{t('master.refreshInventory')}</button>
-                    <button type="button" className="button button--ghost" onClick={() => run('barcodeGeneration', () => api.request(`/items/${selected.itemId}/internal-barcode`, { method: 'POST' }))}>{t('master.generateBarcode')}</button>
-                  </div>
-                  <div className="inventory-summary">
-                    <div className="metric"><span>{t('common.onHand')}</span><strong>{formatNumber(inventoryDetail.totals.quantityOnHand)}</strong></div>
-                    <div className="metric"><span>{t('common.reserved')}</span><strong>{formatNumber(inventoryDetail.totals.quantityReserved)}</strong></div>
-                    <div className="metric metric--accent"><span>{t('common.available')}</span><strong>{formatNumber(inventoryDetail.totals.quantityAvailable)}</strong></div>
-                  </div>
-                </div>
-              ) : null}
-            </div>
+            ) : null}
           </div>
         ) : null}
         {section === 'inbound' ? (
@@ -1897,6 +3090,39 @@ export default function App() {
                   <label className="field"><span>{t('inbound.manualLot')}</span><input value={forms.receiptLine.manualLotNumber} onChange={(event) => updateForm('receiptLine', 'manualLotNumber', event.target.value)} /></label>
                 </div>
                 <button type="button" className="button button--ghost" onClick={addReceiptLine}>{t('inbound.addReceiptLine')}</button>
+                <div className="subpanel">
+                  <div className="panel__header">
+                    <div>
+                      <h2>{t('inbound.scanReceiveTitle')}</h2>
+                      <p>{t('inbound.scanReceiveDescription')}</p>
+                    </div>
+                  </div>
+                  <p className="inline-note">
+                    {t('inbound.receiptContext')}: <strong>{selected.receiptId || t('common.notSet')}</strong>
+                    {selected.purchaseOrderId ? ` | ${t('inbound.po')}: ${purchaseOrderDetail?.poNumber || selected.purchaseOrderId}` : ''}
+                  </p>
+                  <p className="inline-note">{t('inbound.autoReceiptNote')}</p>
+                  <div className="form-grid">
+                    <label className="field"><span>{t('inbound.itemScan')}</span><input value={forms.receivingScan.itemScan} onChange={(event) => updateForm('receivingScan', 'itemScan', event.target.value)} /></label>
+                    <label className="field"><span>{t('inbound.receivedQty')}</span><input value={forms.receivingScan.receivedQty} onChange={(event) => updateForm('receivingScan', 'receivedQty', event.target.value)} /></label>
+                    <label className="field"><span>{t('inbound.locationScan')}</span><input value={forms.receivingScan.receivingLocationScan} onChange={(event) => updateForm('receivingScan', 'receivingLocationScan', event.target.value)} /></label>
+                    <label className="field"><span>{t('inbound.putawayScan')}</span><input value={forms.receivingScan.putawayLocationScan} onChange={(event) => updateForm('receivingScan', 'putawayLocationScan', event.target.value)} /></label>
+                    <label className="field"><span>{t('inbound.manualLot')}</span><input value={forms.receivingScan.lotScan} onChange={(event) => updateForm('receivingScan', 'lotScan', event.target.value)} /></label>
+                    <label className="field"><span>{t('inbound.serialList')}</span><input value={forms.receivingScan.serialNumbers} onChange={(event) => updateForm('receivingScan', 'serialNumbers', event.target.value)} /></label>
+                  </div>
+                  <div className="detail-card">
+                    <p className="inline-note">
+                      {t('common.item')}: <strong>{receivingScannedItem ? `${receivingScannedItem.internalSku} - ${receivingScannedItem.name}` : t('common.notSet')}</strong>
+                    </p>
+                    <p className="inline-note">
+                      {t('common.location')}: <strong>{receivingScannedLocation ? `${receivingScannedLocation.locationCode} - ${receivingScannedLocation.locationName}` : t('common.notSet')}</strong>
+                    </p>
+                    <p className="inline-note">
+                      {t('inbound.poLineMatch')}: <strong>{receivingMatchedPoLine ? `${receivingMatchedPoLine.lineNumber} / ${receivingMatchedPoLine.internalSku}` : t('common.notSet')}</strong>
+                    </p>
+                  </div>
+                  <button type="button" className="button button--secondary" onClick={applyReceivingScan}>{t('inbound.applyScannedReceipt')}</button>
+                </div>
               </div>
             </div>
 
@@ -2001,6 +3227,45 @@ export default function App() {
                     <div className="empty-state">{t('fulfillment.createPickToTrack')}</div>
                   )}
                 </div>
+                <div className="subpanel">
+                  <div className="panel__header">
+                    <div>
+                      <h2>{t('fulfillment.guidedPickTitle')}</h2>
+                      <p>{t('fulfillment.guidedPickDescription')}</p>
+                    </div>
+                  </div>
+                  <p className="inline-note">{t('fulfillment.confirmWholePickNote')}</p>
+                  <div className="button-row">
+                    <button type="button" className="button button--ghost" onClick={loadOpenPick}>{t('fulfillment.loadOpenPick')}</button>
+                  </div>
+                  <div className="form-grid">
+                    <label className="field"><span>{t('fulfillment.pickLocationScan')}</span><input value={forms.pickingScan.locationScan} onChange={(event) => updateForm('pickingScan', 'locationScan', event.target.value)} /></label>
+                    <label className="field"><span>{t('fulfillment.pickItemScan')}</span><input value={forms.pickingScan.itemScan} onChange={(event) => updateForm('pickingScan', 'itemScan', event.target.value)} /></label>
+                  </div>
+                  <div className="detail-card">
+                    <p className="inline-note">
+                      {t('fulfillment.matchedPickLine')}: <strong>{guidedPickLine ? `${guidedPickLine.locationCode} / ${guidedPickLine.internalSku} / ${formatNumber(guidedPickLine.pickedQty)}` : t('common.notSet')}</strong>
+                    </p>
+                    <p className="inline-note">
+                      {t('fulfillment.openPickLines')}: <strong>{activePick?.lines?.length ?? 0}</strong>
+                    </p>
+                  </div>
+                  {activePick?.lines?.length ? (
+                    <Table
+                      rowKey="pickLineId"
+                      rows={activePick.lines}
+                      emptyMessage={t('common.noRecords')}
+                      columns={[
+                        { key: 'locationCode', label: t('common.location') },
+                        { key: 'internalSku', label: t('common.sku') },
+                        { key: 'lotNumber', label: t('common.lot'), render: (row) => row.lotNumber || t('common.notSet') },
+                        { key: 'serialNumber', label: t('common.serial'), render: (row) => row.serialNumber || t('common.notSet') },
+                        { key: 'pickedQty', label: t('common.qty'), render: (row) => formatNumber(row.pickedQty) }
+                      ]}
+                    />
+                  ) : null}
+                  <button type="button" className="button button--secondary" onClick={confirmGuidedPick}>{t('fulfillment.confirmGuidedPick')}</button>
+                </div>
               </div>
             </div>
 
@@ -2062,6 +3327,37 @@ export default function App() {
                   <label className="field"><span>{t('counts.countedQty')}</span><input value={forms.cycleCountLine.countedQty} onChange={(event) => updateForm('cycleCountLine', 'countedQty', event.target.value)} /></label>
                 </div>
                 <button type="button" className="button button--ghost" onClick={addCycleCountLine}>{t('counts.addCountLine')}</button>
+                <div className="subpanel">
+                  <div className="panel__header">
+                    <div>
+                      <h2>{t('counts.scanEntryTitle')}</h2>
+                      <p>{t('counts.scanEntryDescription')}</p>
+                    </div>
+                  </div>
+                  <p className="inline-note">
+                    {t('counts.countContext')}: <strong>{cycleCountDetail?.cycleCountNumber || selected.cycleCountId || t('common.notSet')}</strong>
+                  </p>
+                  <p className="inline-note">{t('counts.autoCountNote')}</p>
+                  <div className="form-grid">
+                    <label className="field"><span>{t('counts.scanLocation')}</span><input value={forms.countScan.locationScan} onChange={(event) => updateForm('countScan', 'locationScan', event.target.value)} /></label>
+                    <label className="field"><span>{t('counts.itemScan')}</span><input value={forms.countScan.itemScan} onChange={(event) => updateForm('countScan', 'itemScan', event.target.value)} /></label>
+                    <label className="field"><span>{t('counts.lotScan')}</span><input value={forms.countScan.lotScan} onChange={(event) => updateForm('countScan', 'lotScan', event.target.value)} /></label>
+                    <label className="field"><span>{t('counts.serialScan')}</span><input value={forms.countScan.serialScan} onChange={(event) => updateForm('countScan', 'serialScan', event.target.value)} /></label>
+                    <label className="field"><span>{t('counts.countedQty')}</span><input value={forms.countScan.countedQty} onChange={(event) => updateForm('countScan', 'countedQty', event.target.value)} /></label>
+                  </div>
+                  <div className="detail-card">
+                    <p className="inline-note">
+                      {t('common.location')}: <strong>{countScannedLocation ? `${countScannedLocation.locationCode} - ${countScannedLocation.locationName}` : t('common.notSet')}</strong>
+                    </p>
+                    <p className="inline-note">
+                      {t('common.item')}: <strong>{countScannedItem ? `${countScannedItem.internalSku} - ${countScannedItem.name}` : t('common.notSet')}</strong>
+                    </p>
+                    <p className="inline-note">
+                      {t('common.lot')}: <strong>{countScannedLotBalance?.lotNumber || t('common.notSet')}</strong> | {t('common.serial')}: <strong>{countScannedSerialBalance?.serialNumber || t('common.notSet')}</strong>
+                    </p>
+                  </div>
+                  <button type="button" className="button button--secondary" onClick={applyCountScan}>{t('counts.applyScannedCount')}</button>
+                </div>
               </div>
 
               <div className="panel">

@@ -35,7 +35,7 @@ Important notes:
 The frontend is organized into six work areas:
 
 - `Overview`: dashboard metrics and a live inventory snapshot
-- `Master`: items, suppliers, customers, item inventory detail, barcode generation
+- `Master`: items, suppliers, customers, item inventory detail, transaction history, lots, serials, and barcode generation
 - `Inbound`: purchase orders and receiving
 - `Fulfillment`: sales orders, allocation, pick creation, pick confirmation
 - `Counts`: cycle count entry and discrepancy approval
@@ -77,6 +77,9 @@ Other important behavior:
 - `Suppliers` and `Customers`: partner master data
 - `Items`: raw materials, sub-assemblies, and finished goods
 - `Locations`: receiving and storage locations
+- `Inventory Transactions`: posted inventory movement history
+- `Inventory Lots`: lot master records and balances
+- `Inventory Serials`: serial master records and current state
 - `Purchase Orders`: procurement documents
 - `Receipts`: inbound stock receipts
 - `Sales Orders`: outbound customer demand
@@ -150,12 +153,13 @@ This is the typical end-to-end business flow in the current app:
 4. Approve the purchase order.
 5. Create a receipt for the selected PO.
 6. Add receipt lines and post the receipt.
-7. Confirm the new stock in `Overview` or `Master > Items and Inventory`.
-8. Create a sales order in `Fulfillment`.
-9. Allocate the sales order, create a pick, and confirm the pick.
-10. Run cycle counts as needed and send discrepancies to Finance/Admin.
-11. Maintain BoMs and create production orders in `Manufacturing`.
-12. Record completions, preview backflush, and execute backflush.
+7. Use the guided scan panels when barcode-first execution is faster than manual entry.
+8. Confirm the new stock in `Overview` or `Master > Items and Inventory`.
+9. Create a sales order in `Fulfillment`.
+10. Allocate the sales order, create a pick, and confirm the pick.
+11. Run cycle counts as needed and send discrepancies to Finance/Admin.
+12. Maintain BoMs and create production orders in `Manufacturing`.
+13. Record completions, preview backflush, and execute backflush.
 
 ## 8. Role-Based Workflows
 
@@ -207,10 +211,17 @@ Use Operations for day-to-day execution.
 
 1. Open the app and select the `Operations` persona.
 2. Go to `Master`.
-3. Create suppliers and customers in the `Partners` panel.
-4. Create items in the `Create Item` panel.
-5. Select an item in `Items and Inventory` to inspect balances.
-6. Generate internal barcodes when needed.
+3. Use the `Active Items` tab as the default working list.
+4. Open `Partners` when you need to create suppliers or customers.
+5. Open `Create Item` when you need to add a new item.
+6. Select an item in `Active Items` to inspect balances, transaction history, lots, and serials.
+7. Generate internal barcodes when needed.
+8. Archive items when they should leave the active list but their history must remain.
+9. Use the `Archived Items` tab to review or restore archived items.
+
+Admin-only note:
+
+- Admin can permanently delete an archived item only when it has no operational references.
 
 #### B. Purchasing and Receiving
 
@@ -222,8 +233,10 @@ Use Operations for day-to-day execution.
 6. Create a receipt for the selected PO.
 7. Add one or more receipt lines.
 8. Enter receiving location, optional putaway location, and optional manual lot number.
-9. Post the selected receipt.
-10. Confirm the posted receipt appears in `Recent Receipts`.
+9. Or use `Guided Receive` to scan the item and location, then add the receipt line directly.
+10. If no receipt is selected, `Guided Receive` creates one for the selected PO automatically.
+11. Post the selected receipt.
+12. Confirm the posted receipt appears in `Recent Receipts`.
 
 Important detail:
 
@@ -236,8 +249,9 @@ Important detail:
 3. Select the sales order from the `Sales Orders` table.
 4. Allocate the sales order.
 5. Create a pick.
-6. Confirm the pick.
-7. Use the `Picker Context` panel to verify the current pick status.
+6. Use `Guided Pick` to load the current open pick and match scanned item plus location values to an open pick line.
+7. Confirm the pick.
+8. Use the `Picker Context` panel to verify the current pick status and open pick lines.
 
 #### D. Cycle Counts
 
@@ -245,8 +259,11 @@ Important detail:
 2. Create a cycle count for a location.
 3. Select the cycle count from `Recent Cycle Counts`.
 4. Add one or more count lines.
-5. Submit the cycle count.
-6. If a discrepancy exists, Finance or Admin must resolve it from the approval queue.
+5. Or use `Guided Scan Count` to scan a location, item, lot, or serial and add the count line directly.
+6. If no cycle count is selected, `Guided Scan Count` creates one automatically for the scanned location.
+7. The scanned location must match the selected cycle count location.
+8. Submit the cycle count.
+9. If a discrepancy exists, Finance or Admin must resolve it from the approval queue.
 
 #### E. Manufacturing
 
@@ -277,7 +294,6 @@ The following capabilities are not fully implemented in the current application:
 
 - login flow is not implemented; persona switching is used instead
 - 3PL export endpoints are placeholders
-- inventory transactions, lots, and serial listing endpoints are placeholders
 - backend user and role administration is not exposed in a dedicated frontend page
 
 ## 10. Launching the App
@@ -298,3 +314,4 @@ This starts:
 For the exact REST surface, see:
 
 - `docs/api-endpoints.md`
+- `docs/IMPROVEMENT_BACKLOG.md`

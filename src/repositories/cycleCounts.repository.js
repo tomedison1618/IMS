@@ -529,6 +529,30 @@ export async function approveDiscrepancyTicket({ ticketId, approvedBy }) {
       );
     }
 
+    if (ticket.serial_id) {
+      if (quantityDelta > 0) {
+        await client.query(
+          `
+            UPDATE inventory_serials
+            SET status = 'AVAILABLE',
+                current_location_id = $2::uuid
+            WHERE serial_id = $1::uuid
+          `,
+          [ticket.serial_id, ticket.location_id]
+        );
+      } else if (quantityDelta < 0) {
+        await client.query(
+          `
+            UPDATE inventory_serials
+            SET status = 'CONSUMED',
+                current_location_id = NULL
+            WHERE serial_id = $1::uuid
+          `,
+          [ticket.serial_id]
+        );
+      }
+    }
+
     const { rows: transactionRows } = await client.query(
       `
         INSERT INTO inventory_transactions (

@@ -292,6 +292,18 @@ async function reserveOrConsumeAvailableInventory(client, { itemId, requiredQty,
       [balance.inventory_balance_id, issueQty]
     );
 
+    if (balance.serial_id) {
+      await client.query(
+        `
+          UPDATE inventory_serials
+          SET status = 'CONSUMED',
+              current_location_id = NULL
+          WHERE serial_id = $1::uuid
+        `,
+        [balance.serial_id]
+      );
+    }
+
     const { rows: transactionRows } = await client.query(
       `
         INSERT INTO inventory_transactions (

@@ -100,6 +100,21 @@ async function getOpenPickBySalesOrder(client, salesOrderId) {
   return rows[0] ?? null;
 }
 
+export async function getOpenPickBySalesOrderId(salesOrderId) {
+  const client = await pool.connect();
+
+  try {
+    const openPick = await getOpenPickBySalesOrder(client, salesOrderId);
+    if (!openPick) {
+      return null;
+    }
+
+    return await getPickDetails(client, openPick.pick_id);
+  } finally {
+    client.release();
+  }
+}
+
 async function getPickDetails(client, pickId) {
   const { rows: pickRows } = await client.query(
     `
@@ -429,6 +444,18 @@ export async function allocateSalesOrder({ salesOrderId }) {
           [line.sales_order_line_id, reserveQty]
         );
 
+        if (balance.serial_id) {
+          await client.query(
+            `
+              UPDATE inventory_serials
+              SET status = 'ALLOCATED',
+                  current_location_id = $2::uuid
+              WHERE serial_id = $1::uuid
+            `,
+            [balance.serial_id, balance.location_id]
+          );
+        }
+
         allocations.push({
           salesOrderLineId: line.sales_order_line_id,
           itemId: line.item_id,
@@ -655,6 +682,18 @@ export async function confirmPick({ salesOrderId, pickId, confirmedBy }) {
         `,
         [line.sales_order_line_id, line.picked_qty]
       );
+
+      if (line.serial_id) {
+        await client.query(
+          `
+            UPDATE inventory_serials
+            SET status = 'SHIPPED',
+                current_location_id = NULL
+            WHERE serial_id = $1::uuid
+          `,
+          [line.serial_id]
+        );
+      }
 
       await client.query(
         `
