@@ -5,6 +5,7 @@ Base path: `/api/v1`
 ## Authentication
 
 - `POST /auth/login`
+  - body: `email`, `password`, optional `requestedRole`
 - `GET /auth/me`
 
 ## Roles and Users
@@ -12,8 +13,10 @@ Base path: `/api/v1`
 - `GET /roles`
 - `GET /users`
 - `POST /users`
+  - body supports `password` and `roleIds`
 - `GET /users/:userId`
 - `PATCH /users/:userId`
+  - body supports `password` for reset/rotation
 - `POST /users/:userId/roles`
 - `DELETE /users/:userId/roles/:roleId`
 

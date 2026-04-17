@@ -12,11 +12,15 @@ export class ApiError extends Error {
 }
 
 function buildHeaders(session, headers = {}) {
+  const authHeaders = session?.userId && session?.role ? {
+    'x-user-id': session.userId,
+    'x-user-roles': session.role
+  } : {};
+
   return {
     ...JSON_HEADERS,
     ...headers,
-    'x-user-id': session.userId,
-    'x-user-roles': session.role
+    ...authHeaders
   };
 }
 
@@ -32,7 +36,7 @@ export function createApiClient(session, apiBaseUrl = import.meta.env.VITE_API_B
   async function request(path, options = {}) {
     const response = await fetch(`${apiBaseUrl}${normalizePath(path)}`, {
       method: options.method ?? 'GET',
-      headers: buildHeaders(session, options.headers),
+      headers: buildHeaders(options.session ?? session, options.headers),
       body: options.body === undefined ? undefined : JSON.stringify(options.body)
     });
 

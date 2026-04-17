@@ -52,6 +52,45 @@ async function getUserByIdWithExecutor(executor, userId) {
   return rows[0] ?? null;
 }
 
+async function getUserByEmailWithExecutor(executor, email) {
+  const roleAggregate = getUserRolesAggregate();
+  const { rows } = await executor.query(
+    `
+      SELECT
+        u.user_id,
+        u.email,
+        u.password_hash,
+        u.first_name,
+        u.last_name,
+        u.status,
+        u.last_login_at,
+        u.created_at,
+        u.updated_at,
+        ${roleAggregate}
+      FROM users u
+      LEFT JOIN user_roles ur
+        ON ur.user_id = u.user_id
+      LEFT JOIN roles r
+        ON r.role_id = ur.role_id
+      WHERE u.email = $1
+      GROUP BY
+        u.user_id,
+        u.email,
+        u.password_hash,
+        u.first_name,
+        u.last_name,
+        u.status,
+        u.last_login_at,
+        u.created_at,
+        u.updated_at
+      LIMIT 1
+    `,
+    [email]
+  );
+
+  return rows[0] ?? null;
+}
+
 export async function listRoles() {
   const { rows } = await pool.query(
     `
@@ -119,6 +158,10 @@ export async function listUsers({ status, limit = 100 } = {}) {
 
 export async function getUserById(userId) {
   return getUserByIdWithExecutor(pool, userId);
+}
+
+export async function getUserByEmail(email) {
+  return getUserByEmailWithExecutor(pool, email);
 }
 
 export async function createUser({ email, firstName, lastName, status, passwordHash, roleIds = [] }) {
@@ -216,6 +259,22 @@ export async function removeRoleFromUser({ userId, roleId }) {
         AND role_id = $2::uuid
     `,
     [userId, roleId]
+  );
+
+  return getUserById(userId);
+}
+
+export async function recordSuccessfulLogin(userId, passwordHash) {
+  await pool.query(
+    `
+      UPDATE users
+      SET
+        last_login_at = NOW(),
+        updated_at = NOW(),
+        password_hash = COALESCE($2, password_hash)
+      WHERE user_id = $1::uuid
+    `,
+    [userId, passwordHash ?? null]
   );
 
   return getUserById(userId);

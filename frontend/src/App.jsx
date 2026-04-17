@@ -1,15 +1,39 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { createApiClient } from './api.js';
 
-const SEEDED_PERSONAS = [
-  { key: 'admin', userId: '10000000-0000-0000-0000-000000000001', roles: ['ADMIN'] },
-  { key: 'finance', userId: '10000000-0000-0000-0000-000000000002', roles: ['FINANCE'] },
-  { key: 'operations', userId: '10000000-0000-0000-0000-000000000003', roles: ['OPERATIONS'] }
+const DEMO_CREDENTIALS = [
+  { label: 'Admin demo', email: 'admin@ims.local', password: 'Admin123!', requestedRole: 'ADMIN' },
+  { label: 'Finance demo', email: 'cfo@ims.local', password: 'Finance123!', requestedRole: 'FINANCE' },
+  { label: 'Operations demo', email: 'ops.test@ims.local', password: 'Ops123!', requestedRole: 'OPERATIONS' }
 ];
-
-const DEFAULT_SESSION = { userId: SEEDED_PERSONAS[0].userId, role: SEEDED_PERSONAS[0].roles[0] };
+const DEFAULT_LOGIN_FORM = {
+  email: DEMO_CREDENTIALS[0].email,
+  password: DEMO_CREDENTIALS[0].password,
+  requestedRole: DEMO_CREDENTIALS[0].requestedRole
+};
+const USER_STATUSES = ['ACTIVE', 'INACTIVE', 'LOCKED'];
+const EMPTY_DATA = {
+  me: null,
+  roles: [],
+  users: [],
+  suppliers: [],
+  customers: [],
+  items: [],
+  locations: [],
+  inventory: [],
+  purchaseOrders: [],
+  receipts: [],
+  salesOrders: [],
+  cycleCounts: [],
+  discrepancyTickets: [],
+  boms: [],
+  productionOrders: [],
+  scrapRequests: []
+};
 
 const DEFAULT_FORMS = {
+  login: DEFAULT_LOGIN_FORM,
+  user: { email: '', firstName: '', lastName: '', status: 'ACTIVE', password: '', roleIds: [] },
   supplier: { supplierCode: '', supplierName: '', contactEmail: '', contactPhone: '', leadTimeDays: '14' },
   customer: { customerCode: '', customerName: '', contactEmail: '', contactPhone: '' },
   item: { internalSku: '', name: '', itemType: 'RAW_MATERIAL', uom: 'EA', minStockLevel: '0', reorderQuantity: '0', leadTimeDays: '0', unitCost: '0' },
@@ -38,14 +62,22 @@ const TEXT = {
   en: {
     'brand.eyebrow': 'Electronics IMS',
     'brand.title': 'Operations Workbench',
-    'brand.description': 'Scanner-friendly UI for receiving, inventory control, fulfillment, and production.',
+    'brand.description': 'Scanner-friendly UI for receiving, inventory control, fulfillment, production, and administration.',
+    'auth.title': 'IMS Login',
+    'auth.description': 'Sign in with a seeded demo account or a managed user account to open the workbench.',
+    'auth.email': 'Email',
+    'auth.password': 'Password',
+    'auth.requestRole': 'Requested role',
+    'auth.signIn': 'Sign in',
+    'auth.demoHint': 'Demo logins: admin@ims.local / Admin123!, cfo@ims.local / Finance123!, and ops.test@ims.local / Ops123!.',
     'hero.eyebrow': 'Live warehouse + production console',
     'hero.title': 'Single-warehouse IMS frontend',
-    'hero.description': 'The UI uses the current REST API directly and keeps the backend RBAC visible through persona switching.',
-    'sidebar.persona': 'Persona',
+    'hero.description': 'The UI uses the current REST API directly and keeps backend RBAC visible through authenticated request roles.',
+    'sidebar.user': 'Signed in user',
     'sidebar.requestRole': 'Request role',
     'sidebar.language': 'Language',
     'sidebar.refresh': 'Refresh workspace',
+    'sidebar.logout': 'Sign out',
     'language.en': 'English',
     'language.vi': 'Vietnamese',
     'toast.status': 'Status',
@@ -53,18 +85,37 @@ const TEXT = {
     'message.workspaceRefreshed': 'Workspace refreshed for {role}.',
     'message.actionCompleted': '{action} completed.',
     'message.workingOn': 'Working on {action}...',
+    'message.loginSuccess': 'Signed in successfully.',
+    'message.sessionExpired': 'Your session is no longer valid. Sign in again.',
+    'message.signedOut': 'Signed out.',
     'nav.overview': 'Overview',
     'nav.master': 'Master',
     'nav.inbound': 'Inbound',
     'nav.fulfillment': 'Fulfillment',
     'nav.counts': 'Counts',
     'nav.manufacturing': 'Manufacturing',
-    'persona.admin.label': 'Admin',
-    'persona.admin.name': 'System Admin',
-    'persona.finance.label': 'Finance',
-    'persona.finance.name': 'Finance',
-    'persona.operations.label': 'Operations',
-    'persona.operations.name': 'Operations',
+    'nav.users': 'Users',
+    'users.directoryTitle': 'User Directory',
+    'users.directoryDescription': 'Admin-only list of IMS users and their current roles.',
+    'users.createTitle': 'Create User',
+    'users.createDescription': 'Add a new login, assign roles, and activate the account.',
+    'users.editTitle': 'Edit User',
+    'users.editDescription': 'Update profile fields, account status, role assignments, or rotate the password.',
+    'users.newUser': 'New user',
+    'users.email': 'Email',
+    'users.name': 'Name',
+    'users.firstName': 'First name',
+    'users.lastName': 'Last name',
+    'users.status': 'Status',
+    'users.roles': 'Roles',
+    'users.rolesDescription': 'Assign one or more request roles to the selected account.',
+    'users.password': 'Password',
+    'users.passwordReset': 'Set new password',
+    'users.passwordResetPlaceholder': 'Leave blank to keep the current password',
+    'users.createUser': 'Create user',
+    'users.saveUser': 'Save user',
+    'users.clearSelection': 'Clear selection',
+    'users.lastLogin': 'Last login',
     'common.notSet': 'Not set',
     'common.noRecords': 'No records yet.',
     'common.restricted': 'Restricted',
@@ -376,6 +427,10 @@ const TEXT = {
     'status.discrepancyRecorded': 'Discrepancy Recorded',
     'status.rejected': 'Rejected',
     'action.refreshWorkspace': 'workspace refresh',
+    'action.login': 'login',
+    'action.logout': 'logout',
+    'action.userCreation': 'user creation',
+    'action.userUpdate': 'user update',
     'action.supplierCreation': 'supplier creation',
     'action.customerCreation': 'customer creation',
     'action.itemCreation': 'item creation',
@@ -827,12 +882,7 @@ function getStatusLabel(t, value) {
 }
 
 function loadStoredSession() {
-  try {
-    const raw = window.localStorage.getItem('ims-front-session');
-    return raw ? JSON.parse(raw) : DEFAULT_SESSION;
-  } catch {
-    return DEFAULT_SESSION;
-  }
+  return null;
 }
 
 function loadStoredLanguage() {
@@ -912,6 +962,17 @@ function createItemEditForm(item) {
   };
 }
 
+function createManagedUserForm(user) {
+  return {
+    email: user?.email ?? '',
+    firstName: user?.firstName ?? '',
+    lastName: user?.lastName ?? '',
+    status: user?.status ?? 'ACTIVE',
+    password: '',
+    roleIds: Array.isArray(user?.roles) ? user.roles.map((role) => role.roleId) : []
+  };
+}
+
 function Badge({ value, t }) {
   const safe = String(value ?? 'unknown').toLowerCase().replace(/[^a-z0-9]+/g, '-');
   return <span className={`badge badge--${safe}`}>{getStatusLabel(t, value)}</span>;
@@ -937,6 +998,226 @@ function Table({ columns, rows, rowKey, onPick, selectedId, emptyMessage }) {
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function LoginScreen({ t, forms, updateForm, language, setLanguage, login, busy, message, applyDemoCredentials }) {
+  return (
+    <div className="auth-shell">
+      <section className="auth-panel">
+        <div className="brand">
+          <span className="brand__eyebrow">{t('brand.eyebrow')}</span>
+          <h1>{t('auth.title')}</h1>
+          <p>{t('auth.description')}</p>
+        </div>
+
+        <div className="auth-grid">
+          <label className="field">
+            <span>{t('auth.email')}</span>
+            <input
+              type="email"
+              value={forms.login.email}
+              onChange={(event) => updateForm('login', 'email', event.target.value)}
+            />
+          </label>
+
+          <label className="field">
+            <span>{t('auth.password')}</span>
+            <input
+              type="password"
+              value={forms.login.password}
+              onChange={(event) => updateForm('login', 'password', event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  login();
+                }
+              }}
+            />
+          </label>
+
+          <label className="field">
+            <span>{t('auth.requestRole')}</span>
+            <select value={forms.login.requestedRole} onChange={(event) => updateForm('login', 'requestedRole', event.target.value)}>
+              <option value="ADMIN">{getRoleLabel(t, 'ADMIN')}</option>
+              <option value="FINANCE">{getRoleLabel(t, 'FINANCE')}</option>
+              <option value="OPERATIONS">{getRoleLabel(t, 'OPERATIONS')}</option>
+            </select>
+          </label>
+
+          <label className="field">
+            <span>{t('sidebar.language')}</span>
+            <select value={language} onChange={(event) => setLanguage(event.target.value)}>
+              <option value="en">{t('language.en')}</option>
+              <option value="vi">{t('language.vi')}</option>
+            </select>
+          </label>
+        </div>
+
+        <div className="button-row">
+          <button type="button" className="button button--block" onClick={login} disabled={busy === 'login'}>
+            {t('auth.signIn')}
+          </button>
+        </div>
+
+        <div className="detail-card">
+          <p className="inline-note">{t('auth.demoHint')}</p>
+          <div className="session-card__chips">
+            {DEMO_CREDENTIALS.map((account) => (
+              <button
+                key={account.email}
+                type="button"
+                className="button button--ghost"
+                onClick={() => applyDemoCredentials(account)}
+              >
+                {account.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="toast">
+          <strong>{t('toast.status')}</strong>
+          <span>{busy === 'login' ? t('message.workingOn', { action: t('action.login') }) : message}</span>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function UserManagementSection({
+  t,
+  data,
+  selectedUser,
+  selectedId,
+  forms,
+  setSelected,
+  updateForm,
+  toggleManagedUserRole,
+  resetManagedUserForm,
+  createManagedUser,
+  saveManagedUser,
+  formatAppDateTime
+}) {
+  return (
+    <div className="stack">
+      <div className="grid grid--2">
+        <div className="panel">
+          <div className="panel__header">
+            <div>
+              <h2>{t('users.directoryTitle')}</h2>
+              <p>{t('users.directoryDescription')}</p>
+            </div>
+            <button type="button" className="button button--ghost" onClick={resetManagedUserForm}>
+              {t('users.newUser')}
+            </button>
+          </div>
+          <Table
+            rowKey="userId"
+            rows={data.users}
+            selectedId={selectedId}
+            emptyMessage={t('common.noRecords')}
+            onPick={(row) => setSelected((current) => ({ ...current, userId: row.userId }))}
+            columns={[
+              { key: 'email', label: t('users.email') },
+              { key: 'fullName', label: t('users.name'), render: (row) => `${row.firstName} ${row.lastName}` },
+              { key: 'status', label: t('common.status'), render: (row) => <Badge value={row.status} t={t} /> },
+              {
+                key: 'roles',
+                label: t('users.roles'),
+                render: (row) => row.roles.length
+                  ? row.roles.map((role) => getRoleLabel(t, role.roleCode)).join(', ')
+                  : t('common.notSet')
+              }
+            ]}
+          />
+        </div>
+
+        <div className="panel">
+          <div className="panel__header">
+            <div>
+              <h2>{selectedUser ? t('users.editTitle') : t('users.createTitle')}</h2>
+              <p>{selectedUser ? t('users.editDescription') : t('users.createDescription')}</p>
+            </div>
+          </div>
+
+          <div className="form-grid">
+            <label className="field">
+              <span>{t('users.email')}</span>
+              <input value={forms.user.email} onChange={(event) => updateForm('user', 'email', event.target.value)} />
+            </label>
+            <label className="field">
+              <span>{t('users.status')}</span>
+              <select value={forms.user.status} onChange={(event) => updateForm('user', 'status', event.target.value)}>
+                {USER_STATUSES.map((status) => (
+                  <option key={status} value={status}>{status}</option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              <span>{t('users.firstName')}</span>
+              <input value={forms.user.firstName} onChange={(event) => updateForm('user', 'firstName', event.target.value)} />
+            </label>
+            <label className="field">
+              <span>{t('users.lastName')}</span>
+              <input value={forms.user.lastName} onChange={(event) => updateForm('user', 'lastName', event.target.value)} />
+            </label>
+            <label className="field field--full">
+              <span>{selectedUser ? t('users.passwordReset') : t('users.password')}</span>
+              <input
+                type="password"
+                value={forms.user.password}
+                placeholder={selectedUser ? t('users.passwordResetPlaceholder') : ''}
+                onChange={(event) => updateForm('user', 'password', event.target.value)}
+              />
+            </label>
+          </div>
+
+          <div className="subpanel">
+            <div className="panel__header">
+              <div>
+                <h2>{t('users.roles')}</h2>
+                <p>{t('users.rolesDescription')}</p>
+              </div>
+            </div>
+            <div className="role-grid">
+              {data.roles.map((role) => {
+                const checked = forms.user.roleIds.includes(role.roleId);
+
+                return (
+                  <label key={role.roleId} className={checked ? 'role-option role-option--checked' : 'role-option'}>
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleManagedUserRole(role.roleId)}
+                    />
+                    <div>
+                      <strong>{getRoleLabel(t, role.roleCode)}</strong>
+                      <small>{role.description || role.roleName}</small>
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="button-row">
+            <button type="button" className="button" onClick={selectedUser ? saveManagedUser : createManagedUser}>
+              {selectedUser ? t('users.saveUser') : t('users.createUser')}
+            </button>
+            <button type="button" className="button button--ghost" onClick={resetManagedUserForm}>
+              {t('users.clearSelection')}
+            </button>
+          </div>
+
+          {selectedUser ? (
+            <div className="detail-card">
+              <p className="inline-note">{t('users.lastLogin')}: <strong>{formatAppDateTime(selectedUser.lastLoginAt)}</strong></p>
+              <p className="inline-note">{t('common.updated')}: <strong>{formatAppDateTime(selectedUser.updatedAt)}</strong></p>
+            </div>
+          ) : null}
+        </div>
+      </div>
     </div>
   );
 }
@@ -968,34 +1249,25 @@ export default function App() {
   const inventoryDetailRef = useRef(null);
   const deferredItemSearch = useDeferredValue(itemSearch);
   const deferredBomLibrarySearch = useDeferredValue(bomLibrarySearch);
-  const [data, setData] = useState({
-    me: null,
-    users: [],
-    suppliers: [],
-    customers: [],
-    items: [],
-    locations: [],
-    inventory: [],
-    purchaseOrders: [],
-    receipts: [],
-    salesOrders: [],
-    cycleCounts: [],
-    discrepancyTickets: [],
-    boms: [],
-    productionOrders: [],
-    scrapRequests: []
-  });
+  const [data, setData] = useState(EMPTY_DATA);
   const api = useMemo(() => createApiClient(session), [session]);
-  const financeVisible = ['ADMIN', 'FINANCE'].includes(session.role);
-  const adminVisible = session.role === 'ADMIN';
-  const canMaintainItems = ['ADMIN', 'OPERATIONS'].includes(session.role);
+  const financeVisible = ['ADMIN', 'FINANCE'].includes(session?.role);
+  const adminVisible = session?.role === 'ADMIN';
+  const canMaintainItems = ['ADMIN', 'OPERATIONS'].includes(session?.role);
   const dateLocale = language === 'vi' ? 'vi-VN' : 'en-US';
   const formatAppDate = (value) => formatDate(value, dateLocale, t('common.notSet'));
   const formatAppDateTime = (value) => formatDateTime(value, dateLocale, t('common.notSet'));
   const actionLabel = (actionKey) => t(`action.${actionKey}`);
+  const selectedManagedUser = useMemo(() => {
+    return data.users.find((user) => user.userId === selected.userId) ?? null;
+  }, [data.users, selected.userId]);
+  const availableRequestRoles = useMemo(() => {
+    return (data.me?.roles ?? []).map((role) => role.roleCode);
+  }, [data.me?.roles]);
+  const navItems = useMemo(() => adminVisible ? [...NAV, 'users'] : NAV, [adminVisible]);
 
   useEffect(() => {
-    window.localStorage.setItem('ims-front-session', JSON.stringify(session));
+    window.localStorage.removeItem('ims-front-session');
   }, [session]);
 
   useEffect(() => {
@@ -1003,6 +1275,12 @@ export default function App() {
   }, [language]);
 
   useEffect(() => {
+    if (!session?.userId || !session?.role) {
+      setData(EMPTY_DATA);
+      setBusy('');
+      return undefined;
+    }
+
     let cancelled = false;
     async function load() {
       setBusy('refreshWorkspace');
@@ -1016,8 +1294,9 @@ export default function App() {
           }
         };
 
-        const [me, users, suppliers, customers, items, locations, inventory, purchaseOrders, receipts, salesOrders, cycleCounts, discrepancyTickets, boms, productionOrders, scrapRequests] = await Promise.all([
+        const [me, roles, users, suppliers, customers, items, locations, inventory, purchaseOrders, receipts, salesOrders, cycleCounts, discrepancyTickets, boms, productionOrders, scrapRequests] = await Promise.all([
           safe('/auth/me', { data: null }),
+          safe('/roles', { data: [] }),
           safe('/users', { data: [] }),
           safe('/suppliers', { data: [] }),
           safe('/customers', { data: [] }),
@@ -1037,6 +1316,7 @@ export default function App() {
         if (cancelled) return;
         setData({
           me: me.data,
+          roles: roles.data,
           users: users.data,
           suppliers: suppliers.data,
           customers: customers.data,
@@ -1054,7 +1334,18 @@ export default function App() {
         });
         setMessage(t('message.workspaceRefreshed', { role: getRoleLabel(t, session.role) }));
       } catch (error) {
-        if (!cancelled) setMessage(error.message);
+        if (cancelled) {
+          return;
+        }
+
+        if (error.status === 401) {
+          setSession(null);
+          setData(EMPTY_DATA);
+          setMessage(t('message.sessionExpired'));
+          return;
+        }
+
+        setMessage(error.message);
       } finally {
         if (!cancelled) setBusy('');
       }
@@ -1063,10 +1354,95 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [api, session.role, session.userId, t]);
+  }, [api, session?.role, session?.userId, t]);
 
   function updateForm(group, key, value) {
     setForms((current) => ({ ...current, [group]: { ...current[group], [key]: value } }));
+  }
+
+  function applyDemoCredentials(account) {
+    setForms((current) => ({
+      ...current,
+      login: {
+        email: account.email,
+        password: account.password,
+        requestedRole: account.requestedRole
+      }
+    }));
+  }
+
+  function toggleManagedUserRole(roleId) {
+    setForms((current) => {
+      const nextRoleIds = current.user.roleIds.includes(roleId)
+        ? current.user.roleIds.filter((value) => value !== roleId)
+        : [...current.user.roleIds, roleId];
+
+      return {
+        ...current,
+        user: {
+          ...current.user,
+          roleIds: nextRoleIds
+        }
+      };
+    });
+  }
+
+  function resetManagedUserForm() {
+    setSelected((current) => {
+      const next = { ...current };
+      delete next.userId;
+      return next;
+    });
+    setForms((current) => ({
+      ...current,
+      user: createManagedUserForm(null)
+    }));
+  }
+
+  async function login() {
+    setBusy('login');
+
+    try {
+      const response = await api.request('/auth/login', {
+        method: 'POST',
+        body: {
+          email: forms.login.email,
+          password: forms.login.password,
+          requestedRole: forms.login.requestedRole
+        },
+        session: null
+      });
+
+      setSession(response.data.session);
+      setSection('overview');
+      setMessage(t('message.loginSuccess'));
+    } catch (error) {
+      setMessage(error.message);
+    } finally {
+      setBusy('');
+    }
+  }
+
+  function logout() {
+    setSession(null);
+    setData(EMPTY_DATA);
+    setSelected({});
+    setInventoryDetail(null);
+    setItemBomState({ status: 'idle', bom: null });
+    setPurchaseOrderDetail(null);
+    setSalesOrderDetail(null);
+    setCycleCountDetail(null);
+    setBomDetail(null);
+    setBomExplosionPreview([]);
+    setBackflushPreview([]);
+    setPicksByOrder({});
+    setForms((current) => ({
+      ...current,
+      login: { ...current.login, password: '' },
+      user: createManagedUserForm(null)
+    }));
+    setSection('overview');
+    setMessage(t('message.signedOut'));
   }
 
   async function run(actionKey, callback) {
@@ -1074,7 +1450,7 @@ export default function App() {
     try {
       const result = await callback();
       setMessage(t('message.actionCompleted', { action: actionLabel(actionKey) }));
-      setSession((current) => ({ ...current }));
+      setSession((current) => current ? { ...current } : current);
       return result;
     } catch (error) {
       setMessage(error.message);
@@ -1084,22 +1460,69 @@ export default function App() {
     }
   }
 
-  const personas = useMemo(() => {
-    return SEEDED_PERSONAS.map((persona) => ({
-      label: t(`persona.${persona.key}.label`),
-      userId: persona.userId,
-      name: t(`persona.${persona.key}.name`),
-      roles: persona.roles
-    }));
-  }, [t]);
+  async function syncManagedUserRoles(userId, previousRoleIds, nextRoleIds) {
+    const previous = new Set(previousRoleIds);
+    const next = new Set(nextRoleIds);
 
-  const defaultPersona = personas[0] ?? {
-    label: t('persona.admin.label'),
-    userId: DEFAULT_SESSION.userId,
-    name: t('persona.admin.name'),
-    roles: [DEFAULT_SESSION.role]
-  };
-  const currentPersona = personas.find((persona) => persona.userId === session.userId) ?? defaultPersona;
+    for (const roleId of next) {
+      if (!previous.has(roleId)) {
+        await api.request(`/users/${userId}/roles`, {
+          method: 'POST',
+          body: { roleId }
+        });
+      }
+    }
+
+    for (const roleId of previous) {
+      if (!next.has(roleId)) {
+        await api.request(`/users/${userId}/roles/${roleId}`, {
+          method: 'DELETE'
+        });
+      }
+    }
+  }
+
+  async function createManagedUser() {
+    const response = await run('userCreation', () => api.request('/users', {
+      method: 'POST',
+      body: {
+        email: forms.user.email,
+        firstName: forms.user.firstName,
+        lastName: forms.user.lastName,
+        status: forms.user.status,
+        password: forms.user.password,
+        roleIds: forms.user.roleIds
+      }
+    }));
+
+    setSelected((current) => ({ ...current, userId: response.data.userId }));
+  }
+
+  async function saveManagedUser() {
+    if (!selectedManagedUser) {
+      throw new Error('Select a user first.');
+    }
+
+    await run('userUpdate', async () => {
+      await api.request(`/users/${selectedManagedUser.userId}`, {
+        method: 'PATCH',
+        body: {
+          email: forms.user.email,
+          firstName: forms.user.firstName,
+          lastName: forms.user.lastName,
+          status: forms.user.status,
+          ...(forms.user.password ? { password: forms.user.password } : {})
+        }
+      });
+
+      await syncManagedUserRoles(
+        selectedManagedUser.userId,
+        selectedManagedUser.roles.map((role) => role.roleId),
+        forms.user.roleIds
+      );
+    });
+  }
+
   const findItemByScan = (scanValue) => {
     const normalized = normalizeScanValue(scanValue);
     if (!normalized) return null;
@@ -1257,6 +1680,13 @@ export default function App() {
       };
     }
 
+    if (section === 'users') {
+      return {
+        title: t('nav.users'),
+        description: t('users.directoryDescription')
+      };
+    }
+
     return {
       title: t('hero.title'),
       description: t('hero.description')
@@ -1268,7 +1698,6 @@ export default function App() {
   const heroDescription = useMemo(() => {
     return sectionHeroContent.description;
   }, [sectionHeroContent]);
-
 
   function applyBomDetails(bom) {
     setBomDetail(bom);
@@ -1459,6 +1888,19 @@ export default function App() {
       itemEdit: item ? createItemEditForm(item) : DEFAULT_FORMS.itemEdit
     }));
   }, [inventoryDetail]);
+
+  useEffect(() => {
+    setForms((current) => ({
+      ...current,
+      user: createManagedUserForm(selectedManagedUser)
+    }));
+  }, [selectedManagedUser]);
+
+  useEffect(() => {
+    if (section === 'users' && !adminVisible) {
+      setSection('overview');
+    }
+  }, [adminVisible, section]);
 
   useEffect(() => {
     const itemType = inventoryDetail?.item?.itemType;
@@ -2409,6 +2851,22 @@ export default function App() {
     </div>
   );
 
+  if (!session) {
+    return (
+      <LoginScreen
+        t={t}
+        forms={forms}
+        updateForm={updateForm}
+        language={language}
+        setLanguage={setLanguage}
+        login={login}
+        busy={busy}
+        message={message}
+        applyDemoCredentials={applyDemoCredentials}
+      />
+    );
+  }
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -2419,7 +2877,7 @@ export default function App() {
         </div>
 
         <nav className="nav">
-          {NAV.map((item) => (
+          {navItems.map((item) => (
             <button key={item} type="button" className={section === item ? 'nav__button nav__button--active' : 'nav__button'} onClick={() => setSection(item)}>
               {t(`nav.${item}`)}
             </button>
@@ -2428,26 +2886,9 @@ export default function App() {
 
         <div className="session-card">
           <label className="field">
-            <span>{t('sidebar.persona')}</span>
-            <select
-              value={session.userId}
-              onChange={(event) => {
-                const next = personas.find((persona) => persona.userId === event.target.value) ?? defaultPersona;
-                setSession({ userId: next.userId, role: next.roles[0] ?? DEFAULT_SESSION.role });
-              }}
-            >
-              {personas.map((persona) => (
-                <option key={persona.userId} value={persona.userId}>
-                  {persona.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="field">
             <span>{t('sidebar.requestRole')}</span>
             <select value={session.role} onChange={(event) => setSession((current) => ({ ...current, role: event.target.value }))}>
-              {(currentPersona.roles.length ? currentPersona.roles : [session.role]).map((roleCode) => (
+              {(availableRequestRoles.length ? availableRequestRoles : [session.role]).map((roleCode) => (
                 <option key={roleCode} value={roleCode}>
                   {getRoleLabel(t, roleCode)}
                 </option>
@@ -2464,8 +2905,8 @@ export default function App() {
           </label>
 
           <div className="session-card__meta">
-            <span>{currentPersona.name}</span>
-            <small>{session.userId}</small>
+            <span>{data.me ? `${data.me.firstName} ${data.me.lastName}` : t('sidebar.user')}</span>
+            <small>{data.me?.email ?? session.userId}</small>
           </div>
 
           <div className="session-card__chips">
@@ -2476,8 +2917,11 @@ export default function App() {
             ))}
           </div>
 
-          <button type="button" className="button button--ghost button--block" onClick={() => setSession((current) => ({ ...current }))}>
+          <button type="button" className="button button--ghost button--block" onClick={() => setSession((current) => current ? { ...current } : current)}>
             {t('sidebar.refresh')}
+          </button>
+          <button type="button" className="button button--ghost button--block" onClick={logout}>
+            {t('sidebar.logout')}
           </button>
         </div>
       </aside>
@@ -3408,6 +3852,22 @@ export default function App() {
               />
             </div>
           </div>
+        ) : null}
+        {section === 'users' ? (
+          <UserManagementSection
+            t={t}
+            data={data}
+            selectedUser={selectedManagedUser}
+            selectedId={selected.userId}
+            forms={forms}
+            setSelected={setSelected}
+            updateForm={updateForm}
+            toggleManagedUserRole={toggleManagedUserRole}
+            resetManagedUserForm={resetManagedUserForm}
+            createManagedUser={createManagedUser}
+            saveManagedUser={saveManagedUser}
+            formatAppDateTime={formatAppDateTime}
+          />
         ) : null}
         {section === 'manufacturing' ? (
           <div className="stack">

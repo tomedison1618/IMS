@@ -17,7 +17,7 @@ The current app is designed for a single-warehouse electronics operation and sup
 
 ## 2. Current Access Model
 
-The current frontend uses a persona switcher instead of a full login flow.
+The current frontend uses a login screen and an authenticated request role selector.
 
 - `Admin`
 - `Finance`
@@ -25,14 +25,14 @@ The current frontend uses a persona switcher instead of a full login flow.
 
 Important notes:
 
-- The persona selector is the current way to test role-based access in the frontend.
+- Users sign in with email, password, and a requested role.
 - The backend still enforces permissions on every API call.
-- Some screens may still be visible to multiple personas, but actions are allowed or blocked by backend authorization.
-- The current `POST /auth/login` endpoint is listed in the API but is not implemented yet.
+- A signed-in user can switch between assigned request roles from the sidebar.
+- Seeded demo credentials are available for the three baseline roles.
 
 ## 3. Application Overview
 
-The frontend is organized into six work areas:
+The frontend is organized into seven work areas:
 
 - `Overview`: dashboard metrics and a live inventory snapshot
 - `Master`: items, suppliers, customers, item inventory detail, transaction history, lots, serials, and barcode generation
@@ -40,6 +40,7 @@ The frontend is organized into six work areas:
 - `Fulfillment`: sales orders, allocation, pick creation, pick confirmation
 - `Counts`: cycle count entry and discrepancy approval
 - `Manufacturing`: BoMs, production orders, completions, backflush, and scrap
+- `Users`: admin-only user maintenance
 
 The application follows a simple operational flow:
 
@@ -69,7 +70,7 @@ Other important behavior:
 
 - `Admin` and `Finance` can view item cost fields
 - `Operations` can work through most transactional workflows
-- the `Refresh workspace` button reloads data for the current persona
+- the `Refresh workspace` button reloads data for the current signed-in user and request role
 - English and Vietnamese are available in the language selector
 
 ## 5. Main Data Objects
@@ -104,7 +105,7 @@ Admin can:
 
 Note:
 
-- User and role administration exists in the API, but there is no dedicated user-management page in the current frontend.
+- Admin can maintain users directly in the `Users` frontend area.
 
 ### Finance
 
@@ -169,12 +170,12 @@ Use Admin when you need full-system supervision or when another role is blocked 
 
 Recommended Admin workflow:
 
-1. Open the app and select the `Admin` persona.
+1. Sign in as `admin@ims.local` with password `Admin123!` and request role `Admin`.
 2. Review `Overview` for open POs, receipts, sales orders, discrepancies, production orders, and zero-available inventory.
 3. Go to `Master` to inspect inventory, restricted item cost fields, and barcode generation.
 4. Use `Inbound`, `Fulfillment`, `Counts`, and `Manufacturing` for corrective or supervisory actions as needed.
 5. Open `Counts` and approve discrepancy tickets when stock mismatches require resolution.
-6. If user or role maintenance is required, use the backend user/role endpoints rather than the current frontend.
+6. Open `Users` when user or role maintenance is required.
 
 When to use Admin:
 
@@ -182,7 +183,7 @@ When to use Admin:
 - troubleshooting blocked workflows
 - approving discrepancies when Finance is unavailable
 - checking restricted financial fields
-- backend user and role maintenance
+- user and role maintenance
 
 ### 8.2 Finance Workflow
 
@@ -190,7 +191,7 @@ Use Finance for visibility, review, and discrepancy control.
 
 Recommended Finance workflow:
 
-1. Open the app and select the `Finance` persona.
+1. Sign in as `cfo@ims.local` with password `Finance123!` and request role `Finance`.
 2. Review `Overview` to understand current inbound, outbound, and manufacturing load.
 3. Go to `Master` and inspect item master data. Unit cost is visible for this role.
 4. Open `Inbound` to review purchase orders and receipts.
@@ -209,7 +210,7 @@ Use Operations for day-to-day execution.
 
 #### A. Master Data Setup
 
-1. Open the app and select the `Operations` persona.
+1. Sign in as `ops.test@ims.local` with password `Ops123!` and request role `Operations`.
 2. Go to `Master`.
 3. Use the `Active Items` tab as the default working list.
 4. Open `Partners` when you need to create suppliers or customers.
@@ -292,9 +293,7 @@ Current-role note:
 
 The following capabilities are not fully implemented in the current application:
 
-- login flow is not implemented; persona switching is used instead
 - 3PL export endpoints are placeholders
-- backend user and role administration is not exposed in a dedicated frontend page
 
 ## 10. Launching the App
 

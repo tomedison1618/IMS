@@ -19,7 +19,7 @@ Initial backend foundation for an inventory management system supporting:
 ## Notes
 
 - `items.unit_cost` is stored in the schema, but it must only be returned by the API for `ADMIN` and `FINANCE`.
-- The auth middleware in this scaffold reads request context from headers so the API surface can be built before the final authentication provider is chosen.
+- The frontend now signs in through `POST /api/v1/auth/login`, then sends the selected request role through headers on subsequent API calls.
 - Everything is container-ready: configuration is env-driven and no deployment vendor assumptions are hard-coded.
 
 ## Seed Data
@@ -30,11 +30,17 @@ Run the baseline seed after the schema:
 psql "YOUR_DATABASE_URL" -f database/seeds/001_baseline_roles_and_users.sql
 ```
 
-Useful seeded user IDs for header-based local testing:
+Useful seeded user IDs for local testing:
 
 - `ADMIN`: `10000000-0000-0000-0000-000000000001`
 - `FINANCE`: `10000000-0000-0000-0000-000000000002`
 - `OPERATIONS`: `10000000-0000-0000-0000-000000000003`
+
+Seeded demo login credentials:
+
+- `admin@ims.local` / `Admin123!`
+- `cfo@ims.local` / `Finance123!`
+- `ops.test@ims.local` / `Ops123!`
 
 Useful seeded master data:
 

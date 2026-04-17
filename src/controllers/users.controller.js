@@ -10,6 +10,7 @@ import {
 import { ROLES } from '../constants/roles.js';
 import { serializeRole, serializeUser } from '../serializers/users.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import { hashPassword } from '../utils/passwords.js';
 import { requireUserId } from '../utils/authContext.js';
 import { createHttpError } from '../utils/httpError.js';
 import { optionalString, requireObject, requireString } from '../utils/request.js';
@@ -52,12 +53,15 @@ export const listUsersHandler = asyncHandler(async (req, res) => {
 export const createUserHandler = asyncHandler(async (req, res) => {
   requireObject(req.body);
 
+  const rawPassword = optionalString(req.body.password);
+  const rawPasswordHash = optionalString(req.body.passwordHash);
+
   const user = await createUser({
     email: requireString(req.body.email, 'email'),
     firstName: requireString(req.body.firstName, 'firstName'),
     lastName: requireString(req.body.lastName, 'lastName'),
     status: req.body.status ? normalizeUserStatus(req.body.status) : 'ACTIVE',
-    passwordHash: optionalString(req.body.passwordHash) ?? 'TEMP_NO_AUTH_YET',
+    passwordHash: rawPassword ? await hashPassword(rawPassword) : (rawPasswordHash ?? 'TEMP_NO_AUTH_YET'),
     roleIds: Array.isArray(req.body.roleIds) ? req.body.roleIds : []
   });
 
@@ -77,12 +81,16 @@ export const getUserHandler = asyncHandler(async (req, res) => {
 export const updateUserHandler = asyncHandler(async (req, res) => {
   requireObject(req.body);
 
+  const rawPassword = optionalString(req.body.password);
+
   const user = await updateUser(req.params.userId, {
     email: optionalString(req.body.email),
     first_name: optionalString(req.body.firstName),
     last_name: optionalString(req.body.lastName),
     status: req.body.status === undefined ? undefined : normalizeUserStatus(req.body.status),
-    password_hash: optionalString(req.body.passwordHash)
+    password_hash: rawPassword
+      ? await hashPassword(rawPassword)
+      : optionalString(req.body.passwordHash) ?? undefined
   });
 
   if (!user) {
