@@ -308,6 +308,8 @@ This starts:
 - backend on `http://localhost:3000`
 - frontend on `http://localhost:5173`
 
+The launcher waits for the backend health check before opening the frontend, which avoids the temporary Vite proxy `ECONNREFUSED` errors that appear when the web app starts before the API is ready.
+
 ## 11. Reference
 
 For the exact REST surface, see:

@@ -1,6 +1,38 @@
 import { pool } from '../db/pool.js';
 import { isUuid } from '../utils/ids.js';
 
+let ensureItemCurrencyColumnPromise;
+
+async function ensureItemCurrencyColumn() {
+  if (!ensureItemCurrencyColumnPromise) {
+    ensureItemCurrencyColumnPromise = pool.query(`
+      ALTER TABLE items ADD COLUMN IF NOT EXISTS unit_cost_currency_code CHAR(3);
+      UPDATE items
+      SET unit_cost_currency_code = 'USD'
+      WHERE unit_cost_currency_code IS NULL OR BTRIM(unit_cost_currency_code) = '';
+      ALTER TABLE items ALTER COLUMN unit_cost_currency_code SET DEFAULT 'USD';
+      ALTER TABLE items ALTER COLUMN unit_cost_currency_code SET NOT NULL;
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1
+          FROM pg_constraint
+          WHERE conname = 'ck_items_unit_cost_currency_code'
+        ) THEN
+          ALTER TABLE items
+          ADD CONSTRAINT ck_items_unit_cost_currency_code
+          CHECK (unit_cost_currency_code IN ('USD', 'VND'));
+        END IF;
+      END $$;
+    `).catch((error) => {
+      ensureItemCurrencyColumnPromise = null;
+      throw error;
+    });
+  }
+
+  await ensureItemCurrencyColumnPromise;
+}
+
 const BASE_ITEM_SELECT = `
   SELECT
     i.item_id,
@@ -18,6 +50,7 @@ const BASE_ITEM_SELECT = `
     i.requires_lot_tracking,
     i.requires_serial_tracking,
     i.unit_cost,
+    i.unit_cost_currency_code,
     i.primary_supplier_id,
     i.is_active,
     i.created_at,
@@ -26,6 +59,8 @@ const BASE_ITEM_SELECT = `
 `;
 
 export async function listItems(filters = {}) {
+  await ensureItemCurrencyColumn();
+
   const values = [];
   const where = [];
 
@@ -64,6 +99,8 @@ export async function listItems(filters = {}) {
 }
 
 export async function findItemByIdOrSku(itemIdOrSku) {
+  await ensureItemCurrencyColumn();
+
   if (isUuid(itemIdOrSku)) {
     const { rows } = await pool.query(
       `
@@ -90,6 +127,8 @@ export async function findItemByIdOrSku(itemIdOrSku) {
 }
 
 export async function createItem(item) {
+  await ensureItemCurrencyColumn();
+
   const { rows } = await pool.query(
     `
       INSERT INTO items (
@@ -107,12 +146,13 @@ export async function createItem(item) {
         requires_lot_tracking,
         requires_serial_tracking,
         unit_cost,
+        unit_cost_currency_code,
         primary_supplier_id,
         is_active
       )
       VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8,
-        $9, $10, $11, $12, $13, $14, $15, $16
+        $9, $10, $11, $12, $13, $14, $15, $16, $17
       )
       RETURNING *
     `,
@@ -131,6 +171,7 @@ export async function createItem(item) {
       item.requiresLotTracking,
       item.requiresSerialTracking,
       item.unitCost,
+      item.unitCostCurrencyCode,
       item.primarySupplierId,
       item.isActive
     ]
@@ -140,6 +181,8 @@ export async function createItem(item) {
 }
 
 export async function updateItem(itemId, changes) {
+  await ensureItemCurrencyColumn();
+
   const fields = Object.entries(changes).filter(([, value]) => value !== undefined);
 
   if (fields.length === 0) {
@@ -163,6 +206,8 @@ export async function updateItem(itemId, changes) {
 }
 
 export async function updateItemBarcode(itemId, barcodeValue, barcodeType) {
+  await ensureItemCurrencyColumn();
+
   const { rows } = await pool.query(
     `
       UPDATE items
@@ -177,6 +222,8 @@ export async function updateItemBarcode(itemId, barcodeValue, barcodeType) {
 }
 
 export async function deleteItem(itemId) {
+  await ensureItemCurrencyColumn();
+
   const client = await pool.connect();
 
   try {

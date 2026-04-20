@@ -95,6 +95,8 @@ Quick start from the project root:
 Start-IMS-App.bat
 ```
 
+The launcher now waits for `http://localhost:3000/health` before opening the frontend, which avoids the initial Vite proxy `ECONNREFUSED` burst when the API is still starting.
+
 Install frontend dependencies:
 
 ```powershell
@@ -114,6 +116,8 @@ Keep the backend running in a separate terminal:
 cd ..
 npm run dev
 ```
+
+If you start the frontend by itself, Vite will log proxy `ECONNREFUSED` errors for `/api/...` until the backend is available on `http://localhost:3000`.
 
 Build the frontend for production:
 

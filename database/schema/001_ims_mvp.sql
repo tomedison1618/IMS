@@ -131,6 +131,7 @@ CREATE TABLE IF NOT EXISTS items (
     requires_lot_tracking BOOLEAN NOT NULL DEFAULT FALSE,
     requires_serial_tracking BOOLEAN NOT NULL DEFAULT FALSE,
     unit_cost NUMERIC(14, 4) NOT NULL DEFAULT 0 CHECK (unit_cost >= 0),
+    unit_cost_currency_code CHAR(3) NOT NULL DEFAULT 'USD' CHECK (unit_cost_currency_code IN ('USD', 'VND')),
     primary_supplier_id UUID REFERENCES suppliers(supplier_id) ON DELETE SET NULL,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -140,6 +141,26 @@ CREATE TABLE IF NOT EXISTS items (
         OR (barcode_value IS NOT NULL AND barcode_type IS NOT NULL)
     )
 );
+
+ALTER TABLE items ADD COLUMN IF NOT EXISTS unit_cost_currency_code CHAR(3);
+UPDATE items
+SET unit_cost_currency_code = 'USD'
+WHERE unit_cost_currency_code IS NULL OR BTRIM(unit_cost_currency_code) = '';
+ALTER TABLE items ALTER COLUMN unit_cost_currency_code SET DEFAULT 'USD';
+ALTER TABLE items ALTER COLUMN unit_cost_currency_code SET NOT NULL;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'ck_items_unit_cost_currency_code'
+    ) THEN
+        ALTER TABLE items
+        ADD CONSTRAINT ck_items_unit_cost_currency_code
+        CHECK (unit_cost_currency_code IN ('USD', 'VND'));
+    END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS locations (
     location_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

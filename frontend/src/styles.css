@@ -104,6 +104,13 @@ button {
   font-weight: 700;
 }
 
+.brand__logo {
+  display: block;
+  width: min(210px, 100%);
+  height: auto;
+  margin-bottom: 6px;
+}
+
 .brand h1,
 .hero h2,
 .panel h2 {
@@ -415,6 +422,11 @@ button {
 .grid--2,
 .form-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.inbound-layout {
+  grid-template-columns: minmax(0, 0.94fr) minmax(0, 1.06fr);
+  align-items: start;
 }
 
 .inventory-shell {

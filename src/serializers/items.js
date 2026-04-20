@@ -28,6 +28,7 @@ export function serializeItem(row, roles = []) {
 
   if (canViewFinancials(roles)) {
     item.unitCost = Number(row.unit_cost);
+    item.unitCostCurrencyCode = row.unit_cost_currency_code;
   }
 
   return item;

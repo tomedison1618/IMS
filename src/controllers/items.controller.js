@@ -16,6 +16,7 @@ import { parseBoolean, parseNumber, optionalString, requireObject, requireString
 
 const ITEM_TYPES = new Set(['FINISHED_GOOD', 'RAW_MATERIAL', 'SUB_ASSEMBLY']);
 const BARCODE_TYPES = new Set(['CODE128', 'QR', 'DATAMATRIX', 'EAN13', 'UPC', 'CODE39']);
+const ITEM_CURRENCY_CODES = new Set(['USD', 'VND']);
 
 function normalizeItemType(value) {
   const normalized = requireString(value, 'itemType').toUpperCase();
@@ -36,6 +37,16 @@ function normalizeBarcodeType(value) {
 
   if (!BARCODE_TYPES.has(normalized)) {
     throw createHttpError(400, 'barcodeType is invalid.');
+  }
+
+  return normalized;
+}
+
+function normalizeItemCurrencyCode(value) {
+  const normalized = requireString(value, 'unitCostCurrencyCode').toUpperCase();
+
+  if (!ITEM_CURRENCY_CODES.has(normalized)) {
+    throw createHttpError(400, 'unitCostCurrencyCode must be USD or VND.');
   }
 
   return normalized;
@@ -110,14 +121,25 @@ function normalizeItemPayload(body, roles, { partial = false } = {}) {
     payload.isActive = parseBoolean(body.isActive, true);
   }
 
-  if (body.unitCost !== undefined) {
+  if (body.unitCost !== undefined || body.unitCostCurrencyCode !== undefined) {
     if (!financeVisible) {
       throw createHttpError(403, 'You are not allowed to set unitCost.');
     }
 
-    payload.unitCost = parseNumber(body.unitCost, 'unitCost');
+    if (body.unitCost !== undefined) {
+      payload.unitCost = parseNumber(body.unitCost, 'unitCost');
+    } else if (!partial) {
+      payload.unitCost = 0;
+    }
+
+    if (body.unitCostCurrencyCode !== undefined) {
+      payload.unitCostCurrencyCode = normalizeItemCurrencyCode(body.unitCostCurrencyCode);
+    } else if (!partial) {
+      payload.unitCostCurrencyCode = 'USD';
+    }
   } else if (!partial) {
     payload.unitCost = 0;
+    payload.unitCostCurrencyCode = 'USD';
   }
 
   if ((payload.barcodeValue && !payload.barcodeType) || (!payload.barcodeValue && payload.barcodeType)) {
@@ -143,6 +165,7 @@ function mapItemChanges(payload) {
     requires_lot_tracking: payload.requiresLotTracking,
     requires_serial_tracking: payload.requiresSerialTracking,
     unit_cost: payload.unitCost,
+    unit_cost_currency_code: payload.unitCostCurrencyCode,
     primary_supplier_id: payload.primarySupplierId,
     is_active: payload.isActive
   };

@@ -1,5 +1,6 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { createApiClient } from './api.js';
+import PostefLogo from './PostefLogo.jsx';
 
 const DEMO_CREDENTIALS = [
   { label: 'Admin demo', email: 'admin@ims.local', password: 'Admin123!', requestedRole: 'ADMIN' },
@@ -12,6 +13,7 @@ const DEFAULT_LOGIN_FORM = {
   requestedRole: DEMO_CREDENTIALS[0].requestedRole
 };
 const USER_STATUSES = ['ACTIVE', 'INACTIVE', 'LOCKED'];
+const SUPPORTED_ITEM_CURRENCIES = ['USD', 'VND'];
 const EMPTY_DATA = {
   me: null,
   roles: [],
@@ -186,6 +188,9 @@ const TEXT = {
     'master.reorderQty': 'Reorder qty',
     'master.leadTime': 'Lead time',
     'master.unitCost': 'Unit cost',
+    'master.unitCostPlaceholder': 'USD 1.25 or VND 25000',
+    'master.unitCostHint': 'Use USD, VND, $, or ₫. Plain numbers default to USD.',
+    'master.unitCostInvalid': 'Enter a valid unit cost like USD 1.25 or VND 25000.',
     'master.createItem': 'Create item',
     'master.partnersTitle': 'Partners',
     'master.partnersDescription': 'Quick-create suppliers and customers for testing.',
@@ -564,6 +569,9 @@ const TEXT = {
     'master.reorderQty': 'SL đặt lại',
     'master.leadTime': 'Thời gian dẫn',
     'master.unitCost': 'Đơn giá',
+    'master.unitCostPlaceholder': 'USD 1.25 hoặc VND 25000',
+    'master.unitCostHint': 'Nhập USD, VND, $, hoặc ₫. Nếu chỉ nhập số, hệ thống sẽ hiểu là USD.',
+    'master.unitCostInvalid': 'Nhập đơn giá hợp lệ, ví dụ USD 1.25 hoặc VND 25000.',
     'master.createItem': 'Tạo mặt hàng',
     'master.partnersTitle': 'Đối tác',
     'master.partnersDescription': 'Tạo nhanh nhà cung cấp và khách hàng để kiểm thử.',
@@ -898,6 +906,65 @@ function formatNumber(value) {
   return new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(Number(value ?? 0));
 }
 
+function normalizeItemCurrencyCode(value, fallback = 'USD') {
+  const normalized = String(value ?? fallback).trim().toUpperCase();
+  return SUPPORTED_ITEM_CURRENCIES.includes(normalized) ? normalized : fallback;
+}
+
+function formatMoney(value, currencyCode = 'USD', locale = 'en-US') {
+  const normalizedCurrencyCode = normalizeItemCurrencyCode(currencyCode);
+  const fractionDigits = normalizedCurrencyCode === 'VND' ? 0 : 2;
+
+  return new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency: normalizedCurrencyCode,
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits
+  }).format(Number(value ?? 0));
+}
+
+function formatEditableMoneyValue(value, currencyCode = 'USD') {
+  const normalizedCurrencyCode = normalizeItemCurrencyCode(currencyCode);
+  const fractionDigits = normalizedCurrencyCode === 'VND' ? 0 : 2;
+  const formattedAmount = new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: fractionDigits
+  }).format(Number(value ?? 0));
+
+  return `${normalizedCurrencyCode} ${formattedAmount}`;
+}
+
+function parseMoneyInput(value, fallbackCurrencyCode = 'USD') {
+  const raw = String(value ?? '').trim();
+  const normalizedCurrencyCode = normalizeItemCurrencyCode(fallbackCurrencyCode);
+
+  if (!raw) {
+    return { amount: 0, currencyCode: normalizedCurrencyCode };
+  }
+
+  let currencyCode = normalizedCurrencyCode;
+  if (/\bVND\b/i.test(raw) || raw.includes('₫')) {
+    currencyCode = 'VND';
+  } else if (/\bUSD\b/i.test(raw) || raw.includes('$')) {
+    currencyCode = 'USD';
+  }
+
+  const normalizedNumberText = raw
+    .replace(/\bUSD\b/ig, '')
+    .replace(/\bVND\b/ig, '')
+    .replace(/\$/g, '')
+    .replace(/₫/g, '')
+    .replace(/,/g, '')
+    .replace(/\s+/g, '');
+  const amount = Number(normalizedNumberText);
+
+  if (!Number.isFinite(amount)) {
+    throw new Error('Enter a valid unit cost like USD 1.25 or VND 25000.');
+  }
+
+  return { amount, currencyCode };
+}
+
 function formatSignedNumber(value) {
   const numeric = Number(value ?? 0);
   const formatted = formatNumber(Math.abs(numeric));
@@ -958,7 +1025,9 @@ function createItemEditForm(item) {
     leadTimeDays: String(item?.leadTimeDays ?? 0),
     requiresLotTracking: item?.requiresLotTracking ? 'true' : 'false',
     requiresSerialTracking: item?.requiresSerialTracking ? 'true' : 'false',
-    unitCost: item?.unitCost === undefined ? '0' : String(item.unitCost ?? 0)
+    unitCost: item?.unitCost === undefined
+      ? '0'
+      : formatEditableMoneyValue(item.unitCost, item?.unitCostCurrencyCode)
   };
 }
 
@@ -1007,6 +1076,7 @@ function LoginScreen({ t, forms, updateForm, language, setLanguage, login, busy,
     <div className="auth-shell">
       <section className="auth-panel">
         <div className="brand">
+          <PostefLogo />
           <span className="brand__eyebrow">{t('brand.eyebrow')}</span>
           <h1>{t('auth.title')}</h1>
           <p>{t('auth.description')}</p>
@@ -1255,8 +1325,17 @@ export default function App() {
   const adminVisible = session?.role === 'ADMIN';
   const canMaintainItems = ['ADMIN', 'OPERATIONS'].includes(session?.role);
   const dateLocale = language === 'vi' ? 'vi-VN' : 'en-US';
+  const moneyLocale = language === 'vi' ? 'vi-VN' : 'en-US';
   const formatAppDate = (value) => formatDate(value, dateLocale, t('common.notSet'));
   const formatAppDateTime = (value) => formatDateTime(value, dateLocale, t('common.notSet'));
+  const formatAppMoney = (value, currencyCode) => formatMoney(value, currencyCode, moneyLocale);
+  const parseItemCostInput = (value, fallbackCurrencyCode) => {
+    try {
+      return parseMoneyInput(value, fallbackCurrencyCode);
+    } catch {
+      throw new Error(t('master.unitCostInvalid'));
+    }
+  };
   const actionLabel = (actionKey) => t(`action.${actionKey}`);
   const selectedManagedUser = useMemo(() => {
     return data.users.find((user) => user.userId === selected.userId) ?? null;
@@ -2015,19 +2094,26 @@ export default function App() {
   }
 
   async function createItem() {
-    const payload = {
-      internalSku: forms.item.internalSku,
-      name: forms.item.name,
-      itemType: forms.item.itemType,
-      uom: forms.item.uom,
-      minStockLevel: Number(forms.item.minStockLevel || 0),
-      reorderQuantity: Number(forms.item.reorderQuantity || 0),
-      leadTimeDays: Number(forms.item.leadTimeDays || 0)
-    };
-    if (financeVisible) payload.unitCost = Number(forms.item.unitCost || 0);
-
     const response = await run('itemCreation', () =>
-      api.request('/items', { method: 'POST', body: payload })
+      {
+        const payload = {
+          internalSku: forms.item.internalSku,
+          name: forms.item.name,
+          itemType: forms.item.itemType,
+          uom: forms.item.uom,
+          minStockLevel: Number(forms.item.minStockLevel || 0),
+          reorderQuantity: Number(forms.item.reorderQuantity || 0),
+          leadTimeDays: Number(forms.item.leadTimeDays || 0)
+        };
+
+        if (financeVisible) {
+          const { amount, currencyCode } = parseItemCostInput(forms.item.unitCost, 'USD');
+          payload.unitCost = amount;
+          payload.unitCostCurrencyCode = currencyCode;
+        }
+
+        return api.request('/items', { method: 'POST', body: payload });
+      }
     );
     setSelected((current) => ({ ...current, itemId: response.data.itemId }));
     setMasterTab('inventory');
@@ -2063,29 +2149,36 @@ export default function App() {
       throw new Error('Select an item first.');
     }
 
-    const payload = {
-      internalSku: forms.itemEdit.internalSku,
-      name: forms.itemEdit.name,
-      itemType: forms.itemEdit.itemType,
-      uom: forms.itemEdit.uom,
-      supplierSku: forms.itemEdit.supplierSku || null,
-      description: forms.itemEdit.description || null,
-      minStockLevel: Number(forms.itemEdit.minStockLevel || 0),
-      reorderQuantity: Number(forms.itemEdit.reorderQuantity || 0),
-      leadTimeDays: Number(forms.itemEdit.leadTimeDays || 0),
-      requiresLotTracking: forms.itemEdit.requiresLotTracking === 'true',
-      requiresSerialTracking: forms.itemEdit.requiresSerialTracking === 'true'
-    };
-
-    if (financeVisible) {
-      payload.unitCost = Number(forms.itemEdit.unitCost || 0);
-    }
-
     const response = await run('itemUpdate', () =>
-      api.request(`/items/${selected.itemId}`, {
-        method: 'PATCH',
-        body: payload
-      })
+      {
+        const payload = {
+          internalSku: forms.itemEdit.internalSku,
+          name: forms.itemEdit.name,
+          itemType: forms.itemEdit.itemType,
+          uom: forms.itemEdit.uom,
+          supplierSku: forms.itemEdit.supplierSku || null,
+          description: forms.itemEdit.description || null,
+          minStockLevel: Number(forms.itemEdit.minStockLevel || 0),
+          reorderQuantity: Number(forms.itemEdit.reorderQuantity || 0),
+          leadTimeDays: Number(forms.itemEdit.leadTimeDays || 0),
+          requiresLotTracking: forms.itemEdit.requiresLotTracking === 'true',
+          requiresSerialTracking: forms.itemEdit.requiresSerialTracking === 'true'
+        };
+
+        if (financeVisible) {
+          const { amount, currencyCode } = parseItemCostInput(
+            forms.itemEdit.unitCost,
+            inventoryDetail?.item?.unitCostCurrencyCode ?? 'USD'
+          );
+          payload.unitCost = amount;
+          payload.unitCostCurrencyCode = currencyCode;
+        }
+
+        return api.request(`/items/${selected.itemId}`, {
+          method: 'PATCH',
+          body: payload
+        });
+      }
     );
     syncItemState(response.data);
     setItemDetailTab('overview');
@@ -2871,6 +2964,7 @@ export default function App() {
     <div className="app-shell">
       <aside className="sidebar">
         <div className="brand">
+          <PostefLogo />
           <span className="brand__eyebrow">{t('brand.eyebrow')}</span>
           <h1>{t('brand.title')}</h1>
           <p>{t('brand.description')}</p>
@@ -3038,7 +3132,11 @@ export default function App() {
                         { key: 'name', label: t('common.name') },
                         { key: 'itemType', label: t('common.type'), render: (row) => t(`itemType.${row.itemType}`) },
                         { key: 'barcodeValue', label: t('master.barcode') },
-                        { key: 'unitCost', label: t('master.unitCost'), render: (row) => (row.unitCost === undefined ? t('common.restricted') : `$${formatNumber(row.unitCost)}`) }
+                        {
+                          key: 'unitCost',
+                          label: t('master.unitCost'),
+                          render: (row) => (row.unitCost === undefined ? t('common.restricted') : formatAppMoney(row.unitCost, row.unitCostCurrencyCode))
+                        }
                       ]}
                     />
                   </div>
@@ -3074,7 +3172,7 @@ export default function App() {
                         <div className="detail-card bom-stat">
                           <span>{t('master.supplierSku')}</span>
                           <strong>{inventoryDetail.item.supplierSku || t('common.notSet')}</strong>
-                          <small>{t('master.unitCost')}: {inventoryDetail.item.unitCost === undefined ? t('common.restricted') : `$${formatNumber(inventoryDetail.item.unitCost)}`}</small>
+                          <small>{t('master.unitCost')}: {inventoryDetail.item.unitCost === undefined ? t('common.restricted') : formatAppMoney(inventoryDetail.item.unitCost, inventoryDetail.item.unitCostCurrencyCode)}</small>
                         </div>
                         <div className="detail-card bom-stat">
                           <span>{t('master.activeBomVersion')}</span>
@@ -3159,7 +3257,7 @@ export default function App() {
                             <div className="detail-card bom-stat">
                               <span>{t('master.supplierSku')}</span>
                               <strong>{inventoryDetail.item.supplierSku || t('common.notSet')}</strong>
-                              <small>{t('master.unitCost')}: {inventoryDetail.item.unitCost === undefined ? t('common.restricted') : `$${formatNumber(inventoryDetail.item.unitCost)}`}</small>
+                              <small>{t('master.unitCost')}: {inventoryDetail.item.unitCost === undefined ? t('common.restricted') : formatAppMoney(inventoryDetail.item.unitCost, inventoryDetail.item.unitCostCurrencyCode)}</small>
                             </div>
                             <div className="detail-card bom-stat">
                               <span>{t('common.quantity')}</span>
@@ -3376,7 +3474,16 @@ export default function App() {
                           </label>
                           <label className="field"><span>{t('master.uom')}</span><input value={forms.itemEdit.uom} onChange={(event) => updateForm('itemEdit', 'uom', event.target.value)} /></label>
                           <label className="field"><span>{t('master.supplierSku')}</span><input value={forms.itemEdit.supplierSku} onChange={(event) => updateForm('itemEdit', 'supplierSku', event.target.value)} /></label>
-                          <label className="field"><span>{t('master.unitCost')}</span><input value={financeVisible ? forms.itemEdit.unitCost : t('common.restricted')} disabled={!financeVisible} onChange={(event) => updateForm('itemEdit', 'unitCost', event.target.value)} /></label>
+                          <label className="field">
+                            <span>{t('master.unitCost')}</span>
+                            <input
+                              value={financeVisible ? forms.itemEdit.unitCost : t('common.restricted')}
+                              disabled={!financeVisible}
+                              placeholder={t('master.unitCostPlaceholder')}
+                              title={t('master.unitCostHint')}
+                              onChange={(event) => updateForm('itemEdit', 'unitCost', event.target.value)}
+                            />
+                          </label>
                           <label className="field"><span>{t('master.minStock')}</span><input value={forms.itemEdit.minStockLevel} onChange={(event) => updateForm('itemEdit', 'minStockLevel', event.target.value)} /></label>
                           <label className="field"><span>{t('master.reorderQty')}</span><input value={forms.itemEdit.reorderQuantity} onChange={(event) => updateForm('itemEdit', 'reorderQuantity', event.target.value)} /></label>
                           <label className="field"><span>{t('master.leadTime')}</span><input value={forms.itemEdit.leadTimeDays} onChange={(event) => updateForm('itemEdit', 'leadTimeDays', event.target.value)} /></label>
@@ -3430,7 +3537,16 @@ export default function App() {
                   <label className="field"><span>{t('master.minStock')}</span><input value={forms.item.minStockLevel} onChange={(event) => updateForm('item', 'minStockLevel', event.target.value)} /></label>
                   <label className="field"><span>{t('master.reorderQty')}</span><input value={forms.item.reorderQuantity} onChange={(event) => updateForm('item', 'reorderQuantity', event.target.value)} /></label>
                   <label className="field"><span>{t('master.leadTime')}</span><input value={forms.item.leadTimeDays} onChange={(event) => updateForm('item', 'leadTimeDays', event.target.value)} /></label>
-                  <label className="field"><span>{t('master.unitCost')}</span><input value={financeVisible ? forms.item.unitCost : t('common.restricted')} disabled={!financeVisible} onChange={(event) => updateForm('item', 'unitCost', event.target.value)} /></label>
+                  <label className="field">
+                    <span>{t('master.unitCost')}</span>
+                    <input
+                      value={financeVisible ? forms.item.unitCost : t('common.restricted')}
+                      disabled={!financeVisible}
+                      placeholder={t('master.unitCostPlaceholder')}
+                      title={t('master.unitCostHint')}
+                      onChange={(event) => updateForm('item', 'unitCost', event.target.value)}
+                    />
+                  </label>
                 </div>
                 <div className="button-row">
                   <button type="button" className="button" onClick={createItem}>{t('master.createItem')}</button>
@@ -3468,150 +3584,153 @@ export default function App() {
         ) : null}
         {section === 'inbound' ? (
           <div className="stack">
-            <div className="grid grid--2">
-              <div className="panel">
-                <div className="panel__header">
-                  <div>
-                    <h2>{t('inbound.purchaseOrdersTitle')}</h2>
-                    <p>{t('inbound.purchaseOrdersDescription')}</p>
-                  </div>
-                </div>
-                <div className="form-grid">
-                  <label className="field">
-                    <span>{t('common.supplier')}</span>
-                    <select value={forms.purchaseOrder.supplierId} onChange={(event) => updateForm('purchaseOrder', 'supplierId', event.target.value)}>
-                      <option value="">{t('common.selectSupplier')}</option>
-                      {data.suppliers.map((supplier) => <option key={supplier.supplierId} value={supplier.supplierId}>{supplier.supplierCode} - {supplier.supplierName}</option>)}
-                    </select>
-                  </label>
-                  <label className="field"><span>{t('inbound.expectedReceipt')}</span><input type="date" value={forms.purchaseOrder.expectedReceiptDate} onChange={(event) => updateForm('purchaseOrder', 'expectedReceiptDate', event.target.value)} /></label>
-                </div>
-                <div className="button-row">
-                  <button type="button" className="button" onClick={createPurchaseOrder}>{t('inbound.createPo')}</button>
-                  <button type="button" className="button button--secondary" onClick={approvePurchaseOrder}>{t('inbound.approveSelectedPo')}</button>
-                </div>
-                <div className="form-grid">
-                  <label className="field">
-                    <span>{t('common.item')}</span>
-                    <select value={forms.purchaseOrderLine.itemId} onChange={(event) => updateForm('purchaseOrderLine', 'itemId', event.target.value)}>
-                      <option value="">{t('common.selectItem')}</option>
-                      {data.items.map((item) => <option key={item.itemId} value={item.itemId}>{item.internalSku} - {item.name}</option>)}
-                    </select>
-                  </label>
-                  <label className="field"><span>{t('common.qty')}</span><input value={forms.purchaseOrderLine.orderedQty} onChange={(event) => updateForm('purchaseOrderLine', 'orderedQty', event.target.value)} /></label>
-                </div>
-                <button type="button" className="button button--ghost" onClick={addPurchaseOrderLine}>{t('inbound.addPoLine')}</button>
-              </div>
-
-              <div className="panel">
-                <div className="panel__header">
-                  <div>
-                    <h2>{t('inbound.receivingTitle')}</h2>
-                    <p>{t('inbound.receivingDescription')}</p>
-                  </div>
-                </div>
-                <div className="button-row">
-                  <button type="button" className="button" onClick={createReceipt}>{t('inbound.createReceipt')}</button>
-                  <button type="button" className="button button--secondary" onClick={postReceipt}>{t('inbound.postSelectedReceipt')}</button>
-                </div>
-                <div className="form-grid">
-                  <label className="field"><span>{t('inbound.poLineUuid')}</span><input value={forms.receiptLine.purchaseOrderLineId} onChange={(event) => updateForm('receiptLine', 'purchaseOrderLineId', event.target.value)} /></label>
-                  <label className="field"><span>{t('inbound.receivedQty')}</span><input value={forms.receiptLine.receivedQty} onChange={(event) => updateForm('receiptLine', 'receivedQty', event.target.value)} /></label>
-                  <label className="field">
-                    <span>{t('inbound.receivingBin')}</span>
-                    <select value={forms.receiptLine.receivingLocationId} onChange={(event) => updateForm('receiptLine', 'receivingLocationId', event.target.value)}>
-                      <option value="">{t('common.selectLocation')}</option>
-                      {data.locations.map((location) => <option key={location.locationId} value={location.locationId}>{location.locationCode}</option>)}
-                    </select>
-                  </label>
-                  <label className="field">
-                    <span>{t('inbound.putawayBin')}</span>
-                    <select value={forms.receiptLine.putawayLocationId} onChange={(event) => updateForm('receiptLine', 'putawayLocationId', event.target.value)}>
-                      <option value="">{t('common.selectLocation')}</option>
-                      {data.locations.map((location) => <option key={location.locationId} value={location.locationId}>{location.locationCode}</option>)}
-                    </select>
-                  </label>
-                  <label className="field"><span>{t('inbound.manualLot')}</span><input value={forms.receiptLine.manualLotNumber} onChange={(event) => updateForm('receiptLine', 'manualLotNumber', event.target.value)} /></label>
-                </div>
-                <button type="button" className="button button--ghost" onClick={addReceiptLine}>{t('inbound.addReceiptLine')}</button>
-                <div className="subpanel">
+            <div className="grid grid--2 inbound-layout">
+              <div className="stack">
+                <div className="panel">
                   <div className="panel__header">
                     <div>
-                      <h2>{t('inbound.scanReceiveTitle')}</h2>
-                      <p>{t('inbound.scanReceiveDescription')}</p>
+                      <h2>{t('inbound.purchaseOrdersTitle')}</h2>
+                      <p>{t('inbound.purchaseOrdersDescription')}</p>
                     </div>
                   </div>
-                  <p className="inline-note">
-                    {t('inbound.receiptContext')}: <strong>{selected.receiptId || t('common.notSet')}</strong>
-                    {selected.purchaseOrderId ? ` | ${t('inbound.po')}: ${purchaseOrderDetail?.poNumber || selected.purchaseOrderId}` : ''}
-                  </p>
-                  <p className="inline-note">{t('inbound.autoReceiptNote')}</p>
                   <div className="form-grid">
-                    <label className="field"><span>{t('inbound.itemScan')}</span><input value={forms.receivingScan.itemScan} onChange={(event) => updateForm('receivingScan', 'itemScan', event.target.value)} /></label>
-                    <label className="field"><span>{t('inbound.receivedQty')}</span><input value={forms.receivingScan.receivedQty} onChange={(event) => updateForm('receivingScan', 'receivedQty', event.target.value)} /></label>
-                    <label className="field"><span>{t('inbound.locationScan')}</span><input value={forms.receivingScan.receivingLocationScan} onChange={(event) => updateForm('receivingScan', 'receivingLocationScan', event.target.value)} /></label>
-                    <label className="field"><span>{t('inbound.putawayScan')}</span><input value={forms.receivingScan.putawayLocationScan} onChange={(event) => updateForm('receivingScan', 'putawayLocationScan', event.target.value)} /></label>
-                    <label className="field"><span>{t('inbound.manualLot')}</span><input value={forms.receivingScan.lotScan} onChange={(event) => updateForm('receivingScan', 'lotScan', event.target.value)} /></label>
-                    <label className="field"><span>{t('inbound.serialList')}</span><input value={forms.receivingScan.serialNumbers} onChange={(event) => updateForm('receivingScan', 'serialNumbers', event.target.value)} /></label>
+                    <label className="field">
+                      <span>{t('common.supplier')}</span>
+                      <select value={forms.purchaseOrder.supplierId} onChange={(event) => updateForm('purchaseOrder', 'supplierId', event.target.value)}>
+                        <option value="">{t('common.selectSupplier')}</option>
+                        {data.suppliers.map((supplier) => <option key={supplier.supplierId} value={supplier.supplierId}>{supplier.supplierCode} - {supplier.supplierName}</option>)}
+                      </select>
+                    </label>
+                    <label className="field"><span>{t('inbound.expectedReceipt')}</span><input type="date" value={forms.purchaseOrder.expectedReceiptDate} onChange={(event) => updateForm('purchaseOrder', 'expectedReceiptDate', event.target.value)} /></label>
                   </div>
-                  <div className="detail-card">
-                    <p className="inline-note">
-                      {t('common.item')}: <strong>{receivingScannedItem ? `${receivingScannedItem.internalSku} - ${receivingScannedItem.name}` : t('common.notSet')}</strong>
-                    </p>
-                    <p className="inline-note">
-                      {t('common.location')}: <strong>{receivingScannedLocation ? `${receivingScannedLocation.locationCode} - ${receivingScannedLocation.locationName}` : t('common.notSet')}</strong>
-                    </p>
-                    <p className="inline-note">
-                      {t('inbound.poLineMatch')}: <strong>{receivingMatchedPoLine ? `${receivingMatchedPoLine.lineNumber} / ${receivingMatchedPoLine.internalSku}` : t('common.notSet')}</strong>
-                    </p>
+                  <div className="button-row">
+                    <button type="button" className="button" onClick={createPurchaseOrder}>{t('inbound.createPo')}</button>
+                    <button type="button" className="button button--secondary" onClick={approvePurchaseOrder}>{t('inbound.approveSelectedPo')}</button>
                   </div>
-                  <button type="button" className="button button--secondary" onClick={applyReceivingScan}>{t('inbound.applyScannedReceipt')}</button>
+                  <div className="form-grid">
+                    <label className="field">
+                      <span>{t('common.item')}</span>
+                      <select value={forms.purchaseOrderLine.itemId} onChange={(event) => updateForm('purchaseOrderLine', 'itemId', event.target.value)}>
+                        <option value="">{t('common.selectItem')}</option>
+                        {data.items.map((item) => <option key={item.itemId} value={item.itemId}>{item.internalSku} - {item.name}</option>)}
+                      </select>
+                    </label>
+                    <label className="field"><span>{t('common.qty')}</span><input value={forms.purchaseOrderLine.orderedQty} onChange={(event) => updateForm('purchaseOrderLine', 'orderedQty', event.target.value)} /></label>
+                  </div>
+                  <button type="button" className="button button--ghost" onClick={addPurchaseOrderLine}>{t('inbound.addPoLine')}</button>
                 </div>
-              </div>
-            </div>
 
-            <div className="grid grid--2">
-              <div className="panel">
-                <div className="panel__header">
-                  <div>
-                    <h2>{t('inbound.recentPurchaseOrdersTitle')}</h2>
-                    <p>{t('inbound.recentPurchaseOrdersDescription')}</p>
+                <div className="panel">
+                  <div className="panel__header">
+                    <div>
+                      <h2>{t('inbound.recentPurchaseOrdersTitle')}</h2>
+                      <p>{t('inbound.recentPurchaseOrdersDescription')}</p>
+                    </div>
                   </div>
+                  <Table
+                    rowKey="purchaseOrderId"
+                    rows={data.purchaseOrders}
+                    selectedId={selected.purchaseOrderId}
+                    emptyMessage={t('common.noRecords')}
+                    onPick={(row) => setSelected((current) => ({ ...current, purchaseOrderId: row.purchaseOrderId }))}
+                    columns={[
+                      { key: 'poNumber', label: t('inbound.po') },
+                      { key: 'supplierName', label: t('common.supplier') },
+                      { key: 'status', label: t('common.status'), render: (row) => <Badge value={row.status} t={t} /> },
+                      { key: 'expectedReceiptDate', label: t('inbound.expected'), render: (row) => formatAppDate(row.expectedReceiptDate) }
+                    ]}
+                  />
                 </div>
-                <Table
-                  rowKey="purchaseOrderId"
-                  rows={data.purchaseOrders}
-                  selectedId={selected.purchaseOrderId}
-                  emptyMessage={t('common.noRecords')}
-                  onPick={(row) => setSelected((current) => ({ ...current, purchaseOrderId: row.purchaseOrderId }))}
-                  columns={[
-                    { key: 'poNumber', label: t('inbound.po') },
-                    { key: 'supplierName', label: t('common.supplier') },
-                    { key: 'status', label: t('common.status'), render: (row) => <Badge value={row.status} t={t} /> },
-                    { key: 'expectedReceiptDate', label: t('inbound.expected'), render: (row) => formatAppDate(row.expectedReceiptDate) }
-                  ]}
-                />
               </div>
-              <div className="panel">
-                <div className="panel__header">
-                  <div>
-                    <h2>{t('inbound.recentReceiptsTitle')}</h2>
-                    <p>{t('inbound.recentReceiptsDescription')}</p>
+
+              <div className="stack">
+                <div className="panel">
+                  <div className="panel__header">
+                    <div>
+                      <h2>{t('inbound.receivingTitle')}</h2>
+                      <p>{t('inbound.receivingDescription')}</p>
+                    </div>
+                  </div>
+                  <div className="button-row">
+                    <button type="button" className="button" onClick={createReceipt}>{t('inbound.createReceipt')}</button>
+                    <button type="button" className="button button--secondary" onClick={postReceipt}>{t('inbound.postSelectedReceipt')}</button>
+                  </div>
+                  <div className="form-grid">
+                    <label className="field"><span>{t('inbound.poLineUuid')}</span><input value={forms.receiptLine.purchaseOrderLineId} onChange={(event) => updateForm('receiptLine', 'purchaseOrderLineId', event.target.value)} /></label>
+                    <label className="field"><span>{t('inbound.receivedQty')}</span><input value={forms.receiptLine.receivedQty} onChange={(event) => updateForm('receiptLine', 'receivedQty', event.target.value)} /></label>
+                    <label className="field">
+                      <span>{t('inbound.receivingBin')}</span>
+                      <select value={forms.receiptLine.receivingLocationId} onChange={(event) => updateForm('receiptLine', 'receivingLocationId', event.target.value)}>
+                        <option value="">{t('common.selectLocation')}</option>
+                        {data.locations.map((location) => <option key={location.locationId} value={location.locationId}>{location.locationCode}</option>)}
+                      </select>
+                    </label>
+                    <label className="field">
+                      <span>{t('inbound.putawayBin')}</span>
+                      <select value={forms.receiptLine.putawayLocationId} onChange={(event) => updateForm('receiptLine', 'putawayLocationId', event.target.value)}>
+                        <option value="">{t('common.selectLocation')}</option>
+                        {data.locations.map((location) => <option key={location.locationId} value={location.locationId}>{location.locationCode}</option>)}
+                      </select>
+                    </label>
+                    <label className="field"><span>{t('inbound.manualLot')}</span><input value={forms.receiptLine.manualLotNumber} onChange={(event) => updateForm('receiptLine', 'manualLotNumber', event.target.value)} /></label>
+                  </div>
+                  <button type="button" className="button button--ghost" onClick={addReceiptLine}>{t('inbound.addReceiptLine')}</button>
+                  <div className="subpanel">
+                    <div className="panel__header">
+                      <div>
+                        <h2>{t('inbound.scanReceiveTitle')}</h2>
+                        <p>{t('inbound.scanReceiveDescription')}</p>
+                      </div>
+                    </div>
+                    <p className="inline-note">
+                      {t('inbound.receiptContext')}: <strong>{selected.receiptId || t('common.notSet')}</strong>
+                      {selected.purchaseOrderId ? ` | ${t('inbound.po')}: ${purchaseOrderDetail?.poNumber || selected.purchaseOrderId}` : ''}
+                    </p>
+                    <p className="inline-note">{t('inbound.autoReceiptNote')}</p>
+                    <div className="form-grid">
+                      <label className="field"><span>{t('inbound.itemScan')}</span><input value={forms.receivingScan.itemScan} onChange={(event) => updateForm('receivingScan', 'itemScan', event.target.value)} /></label>
+                      <label className="field"><span>{t('inbound.receivedQty')}</span><input value={forms.receivingScan.receivedQty} onChange={(event) => updateForm('receivingScan', 'receivedQty', event.target.value)} /></label>
+                      <label className="field"><span>{t('inbound.locationScan')}</span><input value={forms.receivingScan.receivingLocationScan} onChange={(event) => updateForm('receivingScan', 'receivingLocationScan', event.target.value)} /></label>
+                      <label className="field"><span>{t('inbound.putawayScan')}</span><input value={forms.receivingScan.putawayLocationScan} onChange={(event) => updateForm('receivingScan', 'putawayLocationScan', event.target.value)} /></label>
+                      <label className="field"><span>{t('inbound.manualLot')}</span><input value={forms.receivingScan.lotScan} onChange={(event) => updateForm('receivingScan', 'lotScan', event.target.value)} /></label>
+                      <label className="field"><span>{t('inbound.serialList')}</span><input value={forms.receivingScan.serialNumbers} onChange={(event) => updateForm('receivingScan', 'serialNumbers', event.target.value)} /></label>
+                    </div>
+                    <div className="detail-card">
+                      <p className="inline-note">
+                        {t('common.item')}: <strong>{receivingScannedItem ? `${receivingScannedItem.internalSku} - ${receivingScannedItem.name}` : t('common.notSet')}</strong>
+                      </p>
+                      <p className="inline-note">
+                        {t('common.location')}: <strong>{receivingScannedLocation ? `${receivingScannedLocation.locationCode} - ${receivingScannedLocation.locationName}` : t('common.notSet')}</strong>
+                      </p>
+                      <p className="inline-note">
+                        {t('inbound.poLineMatch')}: <strong>{receivingMatchedPoLine ? `${receivingMatchedPoLine.lineNumber} / ${receivingMatchedPoLine.internalSku}` : t('common.notSet')}</strong>
+                      </p>
+                    </div>
+                    <button type="button" className="button button--secondary" onClick={applyReceivingScan}>{t('inbound.applyScannedReceipt')}</button>
                   </div>
                 </div>
-                <Table
-                  rowKey="receiptId"
-                  rows={data.receipts}
-                  selectedId={selected.receiptId}
-                  emptyMessage={t('common.noRecords')}
-                  onPick={(row) => setSelected((current) => ({ ...current, receiptId: row.receiptId }))}
-                  columns={[
-                    { key: 'receiptNumber', label: t('inbound.receipt') },
-                    { key: 'poNumber', label: t('inbound.po') },
-                    { key: 'status', label: t('common.status'), render: (row) => <Badge value={row.status} t={t} /> },
-                    { key: 'postedAt', label: t('inbound.posted'), render: (row) => formatAppDate(row.postedAt) }
-                  ]}
-                />
+
+                <div className="panel">
+                  <div className="panel__header">
+                    <div>
+                      <h2>{t('inbound.recentReceiptsTitle')}</h2>
+                      <p>{t('inbound.recentReceiptsDescription')}</p>
+                    </div>
+                  </div>
+                  <Table
+                    rowKey="receiptId"
+                    rows={data.receipts}
+                    selectedId={selected.receiptId}
+                    emptyMessage={t('common.noRecords')}
+                    onPick={(row) => setSelected((current) => ({ ...current, receiptId: row.receiptId }))}
+                    columns={[
+                      { key: 'receiptNumber', label: t('inbound.receipt') },
+                      { key: 'poNumber', label: t('inbound.po') },
+                      { key: 'status', label: t('common.status'), render: (row) => <Badge value={row.status} t={t} /> },
+                      { key: 'postedAt', label: t('inbound.posted'), render: (row) => formatAppDate(row.postedAt) }
+                    ]}
+                  />
+                </div>
               </div>
             </div>
           </div>
