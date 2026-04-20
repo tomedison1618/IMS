@@ -71,6 +71,7 @@ const TEXT = {
     'auth.password': 'Password',
     'auth.requestRole': 'Requested role',
     'auth.signIn': 'Sign in',
+    'auth.demoAccount': '{role} demo',
     'auth.demoHint': 'Demo logins: admin@ims.local / Admin123!, cfo@ims.local / Finance123!, and ops.test@ims.local / Ops123!.',
     'hero.eyebrow': 'Live warehouse + production console',
     'hero.title': 'Single-warehouse IMS frontend',
@@ -92,7 +93,8 @@ const TEXT = {
     'message.signedOut': 'Signed out.',
     'nav.overview': 'Overview',
     'nav.master': 'Master',
-    'nav.inbound': 'Inbound',
+    'nav.purchaseOrders': 'Purchase Orders',
+    'nav.receiving': 'Receiving',
     'nav.fulfillment': 'Fulfillment',
     'nav.counts': 'Counts',
     'nav.manufacturing': 'Manufacturing',
@@ -471,19 +473,58 @@ const TEXT = {
     'action.productionScrapSignoff': 'production scrap signoff',
     'action.warehouseScrapSignoff': 'warehouse scrap signoff',
     'action.barcodeGeneration': 'barcode generation',
-    'error.createPickFirst': 'Create a pick first.'
+    'error.createPickFirst': 'Create a pick first.',
+    'error.selectUserFirst': 'Select a user first.',
+    'error.selectItemFirst': 'Select an item first.',
+    'error.scanValidItemFirst': 'Scan a valid item barcode or SKU first.',
+    'error.scanValidReceivingLocationFirst': 'Scan a valid receiving location first.',
+    'error.receivingPoLineMismatch': 'The scanned item does not match a line on the selected purchase order.',
+    'error.receivingLotRequired': 'Lot-tracked items require a lot number.',
+    'error.receivingWholeNumberQty': 'Serial-tracked receiving requires a whole-number quantity.',
+    'error.receivingSerialCountMismatch': 'Serial list count must match received quantity.',
+    'error.selectPurchaseOrderBeforeReceivingScan': 'Select a purchase order before scanning receipt lines.',
+    'error.selectSalesOrderFirst': 'Select a sales order first.',
+    'error.guidedPickMismatch': 'Scan a location and item that match an open pick line.',
+    'error.scanValidCountLocationFirst': 'Scan a valid count location first.',
+    'error.countLocationMismatch': 'The scanned location does not match the selected cycle count.',
+    'error.scanValidCountItemFirst': 'Scan a valid item or serial first.',
+    'roleDescription.admin': 'Full system access',
+    'roleDescription.finance': 'Financial visibility and discrepancy approval',
+    'roleDescription.operations': 'Combined procurement, warehouse, and production operations',
+    'status.active': 'Active',
+    'status.inactive': 'Inactive',
+    'status.locked': 'Locked',
+    'status.received': 'Received',
+    'status.cancelled': 'Cancelled',
+    'status.pendingApproval': 'Pending Approval',
+    'status.partiallyReceived': 'Partially Received',
+    'status.voided': 'Voided',
+    'status.shipped': 'Shipped',
+    'status.inProgress': 'In Progress',
+    'status.submitted': 'Submitted',
+    'status.applied': 'Applied'
   },
   vi: {
     'brand.eyebrow': 'IMS Điện Tử',
     'brand.title': 'Bảng Điều Hành Vận Hành',
     'brand.description': 'Giao diện thân thiện với máy quét cho nhập hàng, kiểm kê tồn kho, xuất hàng và sản xuất.',
+    'auth.title': 'Đăng nhập IMS',
+    'auth.description': 'Đăng nhập bằng tài khoản mẫu hoặc tài khoản người dùng để mở bảng điều hành.',
+    'auth.email': 'Email',
+    'auth.password': 'Mật khẩu',
+    'auth.requestRole': 'Vai trò yêu cầu',
+    'auth.signIn': 'Đăng nhập',
+    'auth.demoAccount': 'Tài khoản mẫu {role}',
+    'auth.demoHint': 'Tài khoản mẫu: admin@ims.local / Admin123!, cfo@ims.local / Finance123!, và ops.test@ims.local / Ops123!.',
     'hero.eyebrow': 'Bảng điều khiển kho + sản xuất trực tiếp',
     'hero.title': 'Giao diện IMS một kho',
     'hero.description': 'Giao diện dùng trực tiếp REST API hiện tại và giữ RBAC của backend hiển thị qua chuyển đổi persona.',
-    'sidebar.persona': 'Persona',
+    'sidebar.user': 'Người dùng đăng nhập',
+    'sidebar.persona': 'Vai trò',
     'sidebar.requestRole': 'Vai trò yêu cầu',
     'sidebar.language': 'Ngôn ngữ',
     'sidebar.refresh': 'Làm mới dữ liệu',
+    'sidebar.logout': 'Đăng xuất',
     'language.en': 'English',
     'language.vi': 'Tiếng Việt',
     'toast.status': 'Trạng thái',
@@ -491,12 +532,38 @@ const TEXT = {
     'message.workspaceRefreshed': 'Đã làm mới dữ liệu cho {role}.',
     'message.actionCompleted': 'Đã hoàn tất {action}.',
     'message.workingOn': 'Đang xử lý {action}...',
+    'message.loginSuccess': 'Đăng nhập thành công.',
+    'message.sessionExpired': 'Phiên đăng nhập không còn hiệu lực. Vui lòng đăng nhập lại.',
+    'message.signedOut': 'Đã đăng xuất.',
     'nav.overview': 'Tổng quan',
     'nav.master': 'Danh mục',
-    'nav.inbound': 'Nhập hàng',
+    'nav.purchaseOrders': 'Đơn mua hàng',
+    'nav.receiving': 'Nhận hàng',
     'nav.fulfillment': 'Xuất hàng',
     'nav.counts': 'Kiểm kê',
     'nav.manufacturing': 'Sản xuất',
+    'nav.users': 'Người dùng',
+    'users.directoryTitle': 'Danh sách người dùng',
+    'users.directoryDescription': 'Danh sách người dùng IMS và vai trò hiện tại, chỉ dành cho quản trị.',
+    'users.createTitle': 'Tạo người dùng',
+    'users.createDescription': 'Thêm tài khoản đăng nhập mới, gán vai trò và kích hoạt tài khoản.',
+    'users.editTitle': 'Sửa người dùng',
+    'users.editDescription': 'Cập nhật hồ sơ, trạng thái tài khoản, vai trò hoặc đổi mật khẩu.',
+    'users.newUser': 'Người dùng mới',
+    'users.email': 'Email',
+    'users.name': 'Tên',
+    'users.firstName': 'Tên',
+    'users.lastName': 'Họ',
+    'users.status': 'Trạng thái',
+    'users.roles': 'Vai trò',
+    'users.rolesDescription': 'Gán một hoặc nhiều vai trò yêu cầu cho tài khoản đang chọn.',
+    'users.password': 'Mật khẩu',
+    'users.passwordReset': 'Đặt mật khẩu mới',
+    'users.passwordResetPlaceholder': 'Để trống nếu muốn giữ mật khẩu hiện tại',
+    'users.createUser': 'Tạo người dùng',
+    'users.saveUser': 'Lưu người dùng',
+    'users.clearSelection': 'Bỏ chọn',
+    'users.lastLogin': 'Lần đăng nhập cuối',
     'persona.admin.label': 'Quản trị',
     'persona.admin.name': 'Quản trị hệ thống',
     'persona.finance.label': 'Tài chính',
@@ -528,11 +595,13 @@ const TEXT = {
     'common.active': 'Đang hiệu lực',
     'common.inactive': 'Không hiệu lực',
     'common.updated': 'Cập nhật',
-    'common.date': 'Date',
-    'common.reference': 'Reference',
-    'common.createdBy': 'Created by',
-    'common.lot': 'Lot',
-    'common.serial': 'Serial',
+    'common.date': 'Ngày',
+    'common.reference': 'Tham chiếu',
+    'common.createdBy': 'Người tạo',
+    'common.lot': 'Lô',
+    'common.serial': 'Sê-ri',
+    'common.yes': 'Có',
+    'common.no': 'Không',
     'common.enterReason': 'Nhập lý do',
     'common.searchSkuName': 'Tìm mã hàng hoặc tên',
     'common.selectSupplier': 'Chọn nhà cung cấp',
@@ -778,7 +847,11 @@ const TEXT = {
     'status.backflushed': 'Đã xuất trừ',
     'status.discrepancyRecorded': 'Đã ghi nhận chênh lệch',
     'status.rejected': 'Từ chối',
+    'action.login': 'đăng nhập',
+    'action.logout': 'đăng xuất',
     'action.refreshWorkspace': 'làm mới dữ liệu',
+    'action.userCreation': 'tạo người dùng',
+    'action.userUpdate': 'cập nhật người dùng',
     'action.supplierCreation': 'tạo nhà cung cấp',
     'action.customerCreation': 'tạo khách hàng',
     'action.itemCreation': 'tạo mặt hàng',
@@ -848,28 +921,74 @@ const TEXT = {
     'manufacturing.selectedLineTitle': 'Dòng đang chọn',
     'manufacturing.selectedLineDescription': 'Xem lại dòng hiện tại trước khi cập nhật hoặc xóa.',
     'manufacturing.noSelectedLineSummary': 'Chọn một dòng linh kiện để chỉnh sửa.',
-    'error.createPickFirst': 'Hãy tạo phiếu lấy hàng trước.'
+    'error.createPickFirst': 'Hãy tạo phiếu lấy hàng trước.',
+    'error.selectUserFirst': 'Hãy chọn người dùng trước.',
+    'error.selectItemFirst': 'Hãy chọn mặt hàng trước.',
+    'error.scanValidItemFirst': 'Hãy quét mã vạch hoặc SKU hợp lệ của mặt hàng trước.',
+    'error.scanValidReceivingLocationFirst': 'Hãy quét vị trí nhận hàng hợp lệ trước.',
+    'error.receivingPoLineMismatch': 'Mặt hàng đã quét không khớp với dòng nào trên đơn mua đã chọn.',
+    'error.receivingLotRequired': 'Mặt hàng theo dõi lô bắt buộc phải nhập số lô.',
+    'error.receivingWholeNumberQty': 'Nhận hàng theo sê-ri yêu cầu số lượng nguyên.',
+    'error.receivingSerialCountMismatch': 'Số lượng sê-ri phải khớp với số lượng nhận.',
+    'error.selectPurchaseOrderBeforeReceivingScan': 'Hãy chọn đơn mua trước khi quét dòng nhận hàng.',
+    'error.selectSalesOrderFirst': 'Hãy chọn đơn bán hàng trước.',
+    'error.guidedPickMismatch': 'Hãy quét vị trí và mặt hàng khớp với một dòng lấy hàng đang mở.',
+    'error.scanValidCountLocationFirst': 'Hãy quét vị trí kiểm kê hợp lệ trước.',
+    'error.countLocationMismatch': 'Vị trí đã quét không khớp với vị trí của phiếu kiểm kê đã chọn.',
+    'error.scanValidCountItemFirst': 'Hãy quét mặt hàng hoặc sê-ri hợp lệ trước.',
+    'roleDescription.admin': 'Toàn quyền hệ thống',
+    'roleDescription.finance': 'Xem tài chính và phê duyệt chênh lệch',
+    'roleDescription.operations': 'Nghiệp vụ mua hàng, kho và sản xuất',
+    'status.active': 'Đang hiệu lực',
+    'status.inactive': 'Không hiệu lực',
+    'status.locked': 'Bị khóa',
+    'status.received': 'Đã nhận',
+    'status.cancelled': 'Đã hủy',
+    'status.pendingApproval': 'Chờ duyệt',
+    'status.partiallyReceived': 'Nhận một phần',
+    'status.voided': 'Đã hủy hiệu lực',
+    'status.shipped': 'Đã giao',
+    'status.inProgress': 'Đang xử lý',
+    'status.submitted': 'Đã gửi',
+    'status.applied': 'Đã áp dụng'
   }
 };
 
-const NAV = ['overview', 'master', 'inbound', 'fulfillment', 'counts', 'manufacturing'];
+const NAV = ['overview', 'master', 'purchaseOrders', 'receiving', 'fulfillment', 'counts', 'manufacturing'];
 const ROLE_LABEL_KEYS = {
   ADMIN: 'role.admin',
   FINANCE: 'role.finance',
   OPERATIONS: 'role.operations'
 };
+const ROLE_DESCRIPTION_KEYS = {
+  ADMIN: 'roleDescription.admin',
+  FINANCE: 'roleDescription.finance',
+  OPERATIONS: 'roleDescription.operations'
+};
 const STATUS_LABEL_KEYS = {
+  ACTIVE: 'status.active',
+  INACTIVE: 'status.inactive',
+  LOCKED: 'status.locked',
   DRAFT: 'status.draft',
   OPEN: 'status.open',
   APPROVED: 'status.approved',
+  RECEIVED: 'status.received',
+  CANCELLED: 'status.cancelled',
+  PENDING_APPROVAL: 'status.pendingApproval',
+  PARTIALLY_RECEIVED: 'status.partiallyReceived',
+  VOIDED: 'status.voided',
   POSTED: 'status.posted',
   ALLOCATED: 'status.allocated',
   PICKING: 'status.picking',
+  SHIPPED: 'status.shipped',
+  IN_PROGRESS: 'status.inProgress',
+  SUBMITTED: 'status.submitted',
   COMPLETED: 'status.completed',
   PENDING: 'status.pending',
   BACKFLUSHED: 'status.backflushed',
   'DISCREPANCY RECORDED': 'status.discrepancyRecorded',
-  REJECTED: 'status.rejected'
+  REJECTED: 'status.rejected',
+  APPLIED: 'status.applied'
 };
 
 function createTranslator(language) {
@@ -882,6 +1001,11 @@ function createTranslator(language) {
 function getRoleLabel(t, roleCode) {
   const key = ROLE_LABEL_KEYS[String(roleCode ?? '').toUpperCase()];
   return key ? t(key) : String(roleCode ?? '');
+}
+
+function getRoleDescription(t, role) {
+  const key = ROLE_DESCRIPTION_KEYS[String(role?.roleCode ?? '').toUpperCase()];
+  return key ? t(key) : (role?.description || role?.roleName || '');
 }
 
 function getStatusLabel(t, value) {
@@ -1140,7 +1264,7 @@ function LoginScreen({ t, forms, updateForm, language, setLanguage, login, busy,
                 className="button button--ghost"
                 onClick={() => applyDemoCredentials(account)}
               >
-                {account.label}
+                {t('auth.demoAccount', { role: getRoleLabel(t, account.requestedRole) })}
               </button>
             ))}
           </div>
@@ -1220,7 +1344,7 @@ function UserManagementSection({
               <span>{t('users.status')}</span>
               <select value={forms.user.status} onChange={(event) => updateForm('user', 'status', event.target.value)}>
                 {USER_STATUSES.map((status) => (
-                  <option key={status} value={status}>{status}</option>
+                  <option key={status} value={status}>{getStatusLabel(t, status)}</option>
                 ))}
               </select>
             </label>
@@ -1263,7 +1387,7 @@ function UserManagementSection({
                     />
                     <div>
                       <strong>{getRoleLabel(t, role.roleCode)}</strong>
-                      <small>{role.description || role.roleName}</small>
+                      <small>{getRoleDescription(t, role)}</small>
                     </div>
                   </label>
                 );
@@ -1329,6 +1453,9 @@ export default function App() {
   const formatAppDate = (value) => formatDate(value, dateLocale, t('common.notSet'));
   const formatAppDateTime = (value) => formatDateTime(value, dateLocale, t('common.notSet'));
   const formatAppMoney = (value, currencyCode) => formatMoney(value, currencyCode, moneyLocale);
+  const fail = (key) => {
+    throw new Error(t(key));
+  };
   const parseItemCostInput = (value, fallbackCurrencyCode) => {
     try {
       return parseMoneyInput(value, fallbackCurrencyCode);
@@ -1579,7 +1706,7 @@ export default function App() {
 
   async function saveManagedUser() {
     if (!selectedManagedUser) {
-      throw new Error('Select a user first.');
+      fail('error.selectUserFirst');
     }
 
     await run('userUpdate', async () => {
@@ -1731,9 +1858,16 @@ export default function App() {
       };
     }
 
-    if (section === 'inbound') {
+    if (section === 'purchaseOrders') {
       return {
-        title: t('nav.inbound'),
+        title: t('nav.purchaseOrders'),
+        description: ''
+      };
+    }
+
+    if (section === 'receiving') {
+      return {
+        title: t('nav.receiving'),
         description: ''
       };
     }
@@ -2135,7 +2269,7 @@ export default function App() {
 
   async function generateBarcodeForSelectedItem() {
     if (!selected.itemId) {
-      throw new Error('Select an item first.');
+      fail('error.selectItemFirst');
     }
 
     const response = await run('barcodeGeneration', () =>
@@ -2146,7 +2280,7 @@ export default function App() {
 
   async function saveSelectedItem() {
     if (!selected.itemId) {
-      throw new Error('Select an item first.');
+      fail('error.selectItemFirst');
     }
 
     const response = await run('itemUpdate', () =>
@@ -2223,7 +2357,7 @@ export default function App() {
 
   async function archiveSelectedItem() {
     if (!selected.itemId) {
-      throw new Error('Select an item first.');
+      fail('error.selectItemFirst');
     }
 
     if (!window.confirm(t('master.archiveConfirm'))) {
@@ -2242,7 +2376,7 @@ export default function App() {
 
   async function restoreSelectedItem() {
     if (!selected.itemId) {
-      throw new Error('Select an item first.');
+      fail('error.selectItemFirst');
     }
 
     if (!window.confirm(t('master.restoreConfirm'))) {
@@ -2261,7 +2395,7 @@ export default function App() {
 
   async function deleteSelectedArchivedItem() {
     if (!selected.itemId) {
-      throw new Error('Select an item first.');
+      fail('error.selectItemFirst');
     }
 
     if (!window.confirm(t('master.deleteArchivedConfirm'))) {
@@ -2427,35 +2561,35 @@ export default function App() {
 
   async function applyReceivingScan() {
     if (!receivingScannedItem) {
-      throw new Error('Scan a valid item barcode or SKU first.');
+      fail('error.scanValidItemFirst');
     }
 
     if (!receivingScannedLocation) {
-      throw new Error('Scan a valid receiving location first.');
+      fail('error.scanValidReceivingLocationFirst');
     }
 
     if (selected.purchaseOrderId && purchaseOrderDetail && !receivingMatchedPoLine) {
-      throw new Error('The scanned item does not match a line on the selected purchase order.');
+      fail('error.receivingPoLineMismatch');
     }
 
     if (receivingScannedItem.requiresLotTracking && !forms.receivingScan.lotScan.trim()) {
-      throw new Error('Lot-tracked items require a lot number.');
+      fail('error.receivingLotRequired');
     }
 
     if (receivingScannedItem.requiresSerialTracking) {
       const receivedQty = Number(forms.receivingScan.receivedQty || 0);
       if (!Number.isInteger(receivedQty) || receivedQty <= 0) {
-        throw new Error('Serial-tracked receiving requires a whole-number quantity.');
+        fail('error.receivingWholeNumberQty');
       }
 
       if (receivingSerialNumbers.length !== receivedQty) {
-        throw new Error('Serial list count must match received quantity.');
+        fail('error.receivingSerialCountMismatch');
       }
     }
 
     const receiptId = selected.receiptId ?? (await createReceipt())?.receiptId;
     if (!receiptId) {
-      throw new Error('Select a purchase order before scanning receipt lines.');
+      fail('error.selectPurchaseOrderBeforeReceivingScan');
     }
 
     await run('receiptLineAdd', () =>
@@ -2476,7 +2610,7 @@ export default function App() {
 
   async function loadOpenPick() {
     if (!selected.salesOrderId) {
-      throw new Error('Select a sales order first.');
+      fail('error.selectSalesOrderFirst');
     }
 
     const response = await api.request(`/fulfillment/sales-orders/${selected.salesOrderId}/picks/open`);
@@ -2487,11 +2621,11 @@ export default function App() {
   async function confirmGuidedPick() {
     const pick = activePick ?? await loadOpenPick();
     if (!pick) {
-      throw new Error('Create a pick before using guided picking.');
+      fail('error.createPickFirst');
     }
 
     if (!guidedPickLine) {
-      throw new Error('Scan a location and item that match an open pick line.');
+      fail('error.guidedPickMismatch');
     }
 
     await confirmPick();
@@ -2499,15 +2633,15 @@ export default function App() {
 
   async function applyCountScan() {
     if (!countScannedLocation) {
-      throw new Error('Scan a valid count location first.');
+      fail('error.scanValidCountLocationFirst');
     }
 
     if (cycleCountDetail && countScannedLocation.locationId !== cycleCountDetail.locationId) {
-      throw new Error('The scanned location does not match the selected cycle count.');
+      fail('error.countLocationMismatch');
     }
 
     if (!countScannedItem) {
-      throw new Error('Scan a valid item or serial first.');
+      fail('error.scanValidCountItemFirst');
     }
 
     const cycleCount = selected.cycleCountId
@@ -3582,156 +3716,173 @@ export default function App() {
             ) : null}
           </div>
         ) : null}
-        {section === 'inbound' ? (
+        {section === 'purchaseOrders' ? (
           <div className="stack">
-            <div className="grid grid--2 inbound-layout">
-              <div className="stack">
-                <div className="panel">
-                  <div className="panel__header">
-                    <div>
-                      <h2>{t('inbound.purchaseOrdersTitle')}</h2>
-                      <p>{t('inbound.purchaseOrdersDescription')}</p>
-                    </div>
-                  </div>
-                  <div className="form-grid">
-                    <label className="field">
-                      <span>{t('common.supplier')}</span>
-                      <select value={forms.purchaseOrder.supplierId} onChange={(event) => updateForm('purchaseOrder', 'supplierId', event.target.value)}>
-                        <option value="">{t('common.selectSupplier')}</option>
-                        {data.suppliers.map((supplier) => <option key={supplier.supplierId} value={supplier.supplierId}>{supplier.supplierCode} - {supplier.supplierName}</option>)}
-                      </select>
-                    </label>
-                    <label className="field"><span>{t('inbound.expectedReceipt')}</span><input type="date" value={forms.purchaseOrder.expectedReceiptDate} onChange={(event) => updateForm('purchaseOrder', 'expectedReceiptDate', event.target.value)} /></label>
-                  </div>
-                  <div className="button-row">
-                    <button type="button" className="button" onClick={createPurchaseOrder}>{t('inbound.createPo')}</button>
-                    <button type="button" className="button button--secondary" onClick={approvePurchaseOrder}>{t('inbound.approveSelectedPo')}</button>
-                  </div>
-                  <div className="form-grid">
-                    <label className="field">
-                      <span>{t('common.item')}</span>
-                      <select value={forms.purchaseOrderLine.itemId} onChange={(event) => updateForm('purchaseOrderLine', 'itemId', event.target.value)}>
-                        <option value="">{t('common.selectItem')}</option>
-                        {data.items.map((item) => <option key={item.itemId} value={item.itemId}>{item.internalSku} - {item.name}</option>)}
-                      </select>
-                    </label>
-                    <label className="field"><span>{t('common.qty')}</span><input value={forms.purchaseOrderLine.orderedQty} onChange={(event) => updateForm('purchaseOrderLine', 'orderedQty', event.target.value)} /></label>
-                  </div>
-                  <button type="button" className="button button--ghost" onClick={addPurchaseOrderLine}>{t('inbound.addPoLine')}</button>
-                </div>
-
-                <div className="panel">
-                  <div className="panel__header">
-                    <div>
-                      <h2>{t('inbound.recentPurchaseOrdersTitle')}</h2>
-                      <p>{t('inbound.recentPurchaseOrdersDescription')}</p>
-                    </div>
-                  </div>
-                  <Table
-                    rowKey="purchaseOrderId"
-                    rows={data.purchaseOrders}
-                    selectedId={selected.purchaseOrderId}
-                    emptyMessage={t('common.noRecords')}
-                    onPick={(row) => setSelected((current) => ({ ...current, purchaseOrderId: row.purchaseOrderId }))}
-                    columns={[
-                      { key: 'poNumber', label: t('inbound.po') },
-                      { key: 'supplierName', label: t('common.supplier') },
-                      { key: 'status', label: t('common.status'), render: (row) => <Badge value={row.status} t={t} /> },
-                      { key: 'expectedReceiptDate', label: t('inbound.expected'), render: (row) => formatAppDate(row.expectedReceiptDate) }
-                    ]}
-                  />
+            <div className="panel">
+              <div className="panel__header">
+                <div>
+                  <h2>{t('inbound.purchaseOrdersTitle')}</h2>
+                  <p>{t('inbound.purchaseOrdersDescription')}</p>
                 </div>
               </div>
+              <div className="form-grid">
+                <label className="field">
+                  <span>{t('common.supplier')}</span>
+                  <select value={forms.purchaseOrder.supplierId} onChange={(event) => updateForm('purchaseOrder', 'supplierId', event.target.value)}>
+                    <option value="">{t('common.selectSupplier')}</option>
+                    {data.suppliers.map((supplier) => <option key={supplier.supplierId} value={supplier.supplierId}>{supplier.supplierCode} - {supplier.supplierName}</option>)}
+                  </select>
+                </label>
+                <label className="field"><span>{t('inbound.expectedReceipt')}</span><input type="date" value={forms.purchaseOrder.expectedReceiptDate} onChange={(event) => updateForm('purchaseOrder', 'expectedReceiptDate', event.target.value)} /></label>
+              </div>
+              <div className="button-row">
+                <button type="button" className="button" onClick={createPurchaseOrder}>{t('inbound.createPo')}</button>
+                <button type="button" className="button button--secondary" onClick={approvePurchaseOrder}>{t('inbound.approveSelectedPo')}</button>
+              </div>
+              <div className="form-grid">
+                <label className="field">
+                  <span>{t('common.item')}</span>
+                  <select value={forms.purchaseOrderLine.itemId} onChange={(event) => updateForm('purchaseOrderLine', 'itemId', event.target.value)}>
+                    <option value="">{t('common.selectItem')}</option>
+                    {data.items.map((item) => <option key={item.itemId} value={item.itemId}>{item.internalSku} - {item.name}</option>)}
+                  </select>
+                </label>
+                <label className="field"><span>{t('common.qty')}</span><input value={forms.purchaseOrderLine.orderedQty} onChange={(event) => updateForm('purchaseOrderLine', 'orderedQty', event.target.value)} /></label>
+              </div>
+              <button type="button" className="button button--ghost" onClick={addPurchaseOrderLine}>{t('inbound.addPoLine')}</button>
+            </div>
 
-              <div className="stack">
-                <div className="panel">
-                  <div className="panel__header">
-                    <div>
-                      <h2>{t('inbound.receivingTitle')}</h2>
-                      <p>{t('inbound.receivingDescription')}</p>
-                    </div>
-                  </div>
-                  <div className="button-row">
-                    <button type="button" className="button" onClick={createReceipt}>{t('inbound.createReceipt')}</button>
-                    <button type="button" className="button button--secondary" onClick={postReceipt}>{t('inbound.postSelectedReceipt')}</button>
-                  </div>
-                  <div className="form-grid">
-                    <label className="field"><span>{t('inbound.poLineUuid')}</span><input value={forms.receiptLine.purchaseOrderLineId} onChange={(event) => updateForm('receiptLine', 'purchaseOrderLineId', event.target.value)} /></label>
-                    <label className="field"><span>{t('inbound.receivedQty')}</span><input value={forms.receiptLine.receivedQty} onChange={(event) => updateForm('receiptLine', 'receivedQty', event.target.value)} /></label>
-                    <label className="field">
-                      <span>{t('inbound.receivingBin')}</span>
-                      <select value={forms.receiptLine.receivingLocationId} onChange={(event) => updateForm('receiptLine', 'receivingLocationId', event.target.value)}>
-                        <option value="">{t('common.selectLocation')}</option>
-                        {data.locations.map((location) => <option key={location.locationId} value={location.locationId}>{location.locationCode}</option>)}
-                      </select>
-                    </label>
-                    <label className="field">
-                      <span>{t('inbound.putawayBin')}</span>
-                      <select value={forms.receiptLine.putawayLocationId} onChange={(event) => updateForm('receiptLine', 'putawayLocationId', event.target.value)}>
-                        <option value="">{t('common.selectLocation')}</option>
-                        {data.locations.map((location) => <option key={location.locationId} value={location.locationId}>{location.locationCode}</option>)}
-                      </select>
-                    </label>
-                    <label className="field"><span>{t('inbound.manualLot')}</span><input value={forms.receiptLine.manualLotNumber} onChange={(event) => updateForm('receiptLine', 'manualLotNumber', event.target.value)} /></label>
-                  </div>
-                  <button type="button" className="button button--ghost" onClick={addReceiptLine}>{t('inbound.addReceiptLine')}</button>
-                  <div className="subpanel">
-                    <div className="panel__header">
-                      <div>
-                        <h2>{t('inbound.scanReceiveTitle')}</h2>
-                        <p>{t('inbound.scanReceiveDescription')}</p>
-                      </div>
-                    </div>
-                    <p className="inline-note">
-                      {t('inbound.receiptContext')}: <strong>{selected.receiptId || t('common.notSet')}</strong>
-                      {selected.purchaseOrderId ? ` | ${t('inbound.po')}: ${purchaseOrderDetail?.poNumber || selected.purchaseOrderId}` : ''}
-                    </p>
-                    <p className="inline-note">{t('inbound.autoReceiptNote')}</p>
-                    <div className="form-grid">
-                      <label className="field"><span>{t('inbound.itemScan')}</span><input value={forms.receivingScan.itemScan} onChange={(event) => updateForm('receivingScan', 'itemScan', event.target.value)} /></label>
-                      <label className="field"><span>{t('inbound.receivedQty')}</span><input value={forms.receivingScan.receivedQty} onChange={(event) => updateForm('receivingScan', 'receivedQty', event.target.value)} /></label>
-                      <label className="field"><span>{t('inbound.locationScan')}</span><input value={forms.receivingScan.receivingLocationScan} onChange={(event) => updateForm('receivingScan', 'receivingLocationScan', event.target.value)} /></label>
-                      <label className="field"><span>{t('inbound.putawayScan')}</span><input value={forms.receivingScan.putawayLocationScan} onChange={(event) => updateForm('receivingScan', 'putawayLocationScan', event.target.value)} /></label>
-                      <label className="field"><span>{t('inbound.manualLot')}</span><input value={forms.receivingScan.lotScan} onChange={(event) => updateForm('receivingScan', 'lotScan', event.target.value)} /></label>
-                      <label className="field"><span>{t('inbound.serialList')}</span><input value={forms.receivingScan.serialNumbers} onChange={(event) => updateForm('receivingScan', 'serialNumbers', event.target.value)} /></label>
-                    </div>
-                    <div className="detail-card">
-                      <p className="inline-note">
-                        {t('common.item')}: <strong>{receivingScannedItem ? `${receivingScannedItem.internalSku} - ${receivingScannedItem.name}` : t('common.notSet')}</strong>
-                      </p>
-                      <p className="inline-note">
-                        {t('common.location')}: <strong>{receivingScannedLocation ? `${receivingScannedLocation.locationCode} - ${receivingScannedLocation.locationName}` : t('common.notSet')}</strong>
-                      </p>
-                      <p className="inline-note">
-                        {t('inbound.poLineMatch')}: <strong>{receivingMatchedPoLine ? `${receivingMatchedPoLine.lineNumber} / ${receivingMatchedPoLine.internalSku}` : t('common.notSet')}</strong>
-                      </p>
-                    </div>
-                    <button type="button" className="button button--secondary" onClick={applyReceivingScan}>{t('inbound.applyScannedReceipt')}</button>
-                  </div>
-                </div>
-
-                <div className="panel">
-                  <div className="panel__header">
-                    <div>
-                      <h2>{t('inbound.recentReceiptsTitle')}</h2>
-                      <p>{t('inbound.recentReceiptsDescription')}</p>
-                    </div>
-                  </div>
-                  <Table
-                    rowKey="receiptId"
-                    rows={data.receipts}
-                    selectedId={selected.receiptId}
-                    emptyMessage={t('common.noRecords')}
-                    onPick={(row) => setSelected((current) => ({ ...current, receiptId: row.receiptId }))}
-                    columns={[
-                      { key: 'receiptNumber', label: t('inbound.receipt') },
-                      { key: 'poNumber', label: t('inbound.po') },
-                      { key: 'status', label: t('common.status'), render: (row) => <Badge value={row.status} t={t} /> },
-                      { key: 'postedAt', label: t('inbound.posted'), render: (row) => formatAppDate(row.postedAt) }
-                    ]}
-                  />
+            <div className="panel">
+              <div className="panel__header">
+                <div>
+                  <h2>{t('inbound.recentPurchaseOrdersTitle')}</h2>
+                  <p>{t('inbound.recentPurchaseOrdersDescription')}</p>
                 </div>
               </div>
+              <Table
+                rowKey="purchaseOrderId"
+                rows={data.purchaseOrders}
+                selectedId={selected.purchaseOrderId}
+                emptyMessage={t('common.noRecords')}
+                onPick={(row) => setSelected((current) => ({ ...current, purchaseOrderId: row.purchaseOrderId }))}
+                columns={[
+                  { key: 'poNumber', label: t('inbound.po') },
+                  { key: 'supplierName', label: t('common.supplier') },
+                  { key: 'status', label: t('common.status'), render: (row) => <Badge value={row.status} t={t} /> },
+                  { key: 'expectedReceiptDate', label: t('inbound.expected'), render: (row) => formatAppDate(row.expectedReceiptDate) }
+                ]}
+              />
+            </div>
+          </div>
+        ) : null}
+        {section === 'receiving' ? (
+          <div className="stack">
+            <div className="panel">
+              <div className="panel__header">
+                <div>
+                  <h2>{t('inbound.receivingTitle')}</h2>
+                  <p>{t('inbound.receivingDescription')}</p>
+                </div>
+              </div>
+              <div className="form-grid">
+                <label className="field field--full">
+                  <span>{t('inbound.po')}</span>
+                  <select
+                    value={selected.purchaseOrderId ?? forms.receipt.purchaseOrderId ?? ''}
+                    onChange={(event) => {
+                      const purchaseOrderId = event.target.value;
+                      setSelected((current) => ({ ...current, purchaseOrderId }));
+                      updateForm('receipt', 'purchaseOrderId', purchaseOrderId);
+                    }}
+                  >
+                    <option value="">{t('inbound.recentPurchaseOrdersDescription')}</option>
+                    {data.purchaseOrders.map((purchaseOrder) => (
+                      <option key={purchaseOrder.purchaseOrderId} value={purchaseOrder.purchaseOrderId}>
+                        {purchaseOrder.poNumber} - {purchaseOrder.supplierName}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <div className="button-row">
+                <button type="button" className="button" onClick={createReceipt}>{t('inbound.createReceipt')}</button>
+                <button type="button" className="button button--secondary" onClick={postReceipt}>{t('inbound.postSelectedReceipt')}</button>
+              </div>
+              <div className="form-grid">
+                <label className="field"><span>{t('inbound.poLineUuid')}</span><input value={forms.receiptLine.purchaseOrderLineId} onChange={(event) => updateForm('receiptLine', 'purchaseOrderLineId', event.target.value)} /></label>
+                <label className="field"><span>{t('inbound.receivedQty')}</span><input value={forms.receiptLine.receivedQty} onChange={(event) => updateForm('receiptLine', 'receivedQty', event.target.value)} /></label>
+                <label className="field">
+                  <span>{t('inbound.receivingBin')}</span>
+                  <select value={forms.receiptLine.receivingLocationId} onChange={(event) => updateForm('receiptLine', 'receivingLocationId', event.target.value)}>
+                    <option value="">{t('common.selectLocation')}</option>
+                    {data.locations.map((location) => <option key={location.locationId} value={location.locationId}>{location.locationCode}</option>)}
+                  </select>
+                </label>
+                <label className="field">
+                  <span>{t('inbound.putawayBin')}</span>
+                  <select value={forms.receiptLine.putawayLocationId} onChange={(event) => updateForm('receiptLine', 'putawayLocationId', event.target.value)}>
+                    <option value="">{t('common.selectLocation')}</option>
+                    {data.locations.map((location) => <option key={location.locationId} value={location.locationId}>{location.locationCode}</option>)}
+                  </select>
+                </label>
+                <label className="field"><span>{t('inbound.manualLot')}</span><input value={forms.receiptLine.manualLotNumber} onChange={(event) => updateForm('receiptLine', 'manualLotNumber', event.target.value)} /></label>
+              </div>
+              <button type="button" className="button button--ghost" onClick={addReceiptLine}>{t('inbound.addReceiptLine')}</button>
+              <div className="subpanel">
+                <div className="panel__header">
+                  <div>
+                    <h2>{t('inbound.scanReceiveTitle')}</h2>
+                    <p>{t('inbound.scanReceiveDescription')}</p>
+                  </div>
+                </div>
+                <p className="inline-note">
+                  {t('inbound.receiptContext')}: <strong>{selected.receiptId || t('common.notSet')}</strong>
+                  {selected.purchaseOrderId ? ` | ${t('inbound.po')}: ${purchaseOrderDetail?.poNumber || selected.purchaseOrderId}` : ''}
+                </p>
+                <p className="inline-note">{t('inbound.autoReceiptNote')}</p>
+                <div className="form-grid">
+                  <label className="field"><span>{t('inbound.itemScan')}</span><input value={forms.receivingScan.itemScan} onChange={(event) => updateForm('receivingScan', 'itemScan', event.target.value)} /></label>
+                  <label className="field"><span>{t('inbound.receivedQty')}</span><input value={forms.receivingScan.receivedQty} onChange={(event) => updateForm('receivingScan', 'receivedQty', event.target.value)} /></label>
+                  <label className="field"><span>{t('inbound.locationScan')}</span><input value={forms.receivingScan.receivingLocationScan} onChange={(event) => updateForm('receivingScan', 'receivingLocationScan', event.target.value)} /></label>
+                  <label className="field"><span>{t('inbound.putawayScan')}</span><input value={forms.receivingScan.putawayLocationScan} onChange={(event) => updateForm('receivingScan', 'putawayLocationScan', event.target.value)} /></label>
+                  <label className="field"><span>{t('inbound.manualLot')}</span><input value={forms.receivingScan.lotScan} onChange={(event) => updateForm('receivingScan', 'lotScan', event.target.value)} /></label>
+                  <label className="field"><span>{t('inbound.serialList')}</span><input value={forms.receivingScan.serialNumbers} onChange={(event) => updateForm('receivingScan', 'serialNumbers', event.target.value)} /></label>
+                </div>
+                <div className="detail-card">
+                  <p className="inline-note">
+                    {t('common.item')}: <strong>{receivingScannedItem ? `${receivingScannedItem.internalSku} - ${receivingScannedItem.name}` : t('common.notSet')}</strong>
+                  </p>
+                  <p className="inline-note">
+                    {t('common.location')}: <strong>{receivingScannedLocation ? `${receivingScannedLocation.locationCode} - ${receivingScannedLocation.locationName}` : t('common.notSet')}</strong>
+                  </p>
+                  <p className="inline-note">
+                    {t('inbound.poLineMatch')}: <strong>{receivingMatchedPoLine ? `${receivingMatchedPoLine.lineNumber} / ${receivingMatchedPoLine.internalSku}` : t('common.notSet')}</strong>
+                  </p>
+                </div>
+                <button type="button" className="button button--secondary" onClick={applyReceivingScan}>{t('inbound.applyScannedReceipt')}</button>
+              </div>
+            </div>
+
+            <div className="panel">
+              <div className="panel__header">
+                <div>
+                  <h2>{t('inbound.recentReceiptsTitle')}</h2>
+                  <p>{t('inbound.recentReceiptsDescription')}</p>
+                </div>
+              </div>
+              <Table
+                rowKey="receiptId"
+                rows={data.receipts}
+                selectedId={selected.receiptId}
+                emptyMessage={t('common.noRecords')}
+                onPick={(row) => setSelected((current) => ({ ...current, receiptId: row.receiptId }))}
+                columns={[
+                  { key: 'receiptNumber', label: t('inbound.receipt') },
+                  { key: 'poNumber', label: t('inbound.po') },
+                  { key: 'status', label: t('common.status'), render: (row) => <Badge value={row.status} t={t} /> },
+                  { key: 'postedAt', label: t('inbound.posted'), render: (row) => formatAppDate(row.postedAt) }
+                ]}
+              />
             </div>
           </div>
         ) : null}

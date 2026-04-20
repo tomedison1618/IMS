@@ -32,11 +32,12 @@ Important notes:
 
 ## 3. Application Overview
 
-The frontend is organized into seven work areas:
+The frontend is organized into eight work areas:
 
 - `Overview`: dashboard metrics and a live inventory snapshot
 - `Master`: items, suppliers, customers, item inventory detail, transaction history, lots, serials, and barcode generation
-- `Inbound`: purchase orders and receiving
+- `Purchase Orders`: procurement order creation, line entry, approval, and recent PO review
+- `Receiving`: receipt creation, scan-assisted receiving, posting, and recent receipt review
 - `Fulfillment`: sales orders, allocation, pick creation, pick confirmation
 - `Counts`: cycle count entry and discrepancy approval
 - `Manufacturing`: BoMs, production orders, completions, backflush, and scrap
