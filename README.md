@@ -127,3 +127,18 @@ npm run build:web
 ```
 
 After the build completes, the Express backend will serve the compiled frontend from `frontend/dist`.
+
+## Windows Demo Package
+
+You can build a Windows demo install package with:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\build-demo-package.ps1
+```
+
+This produces:
+
+- an unpacked demo package folder under `dist/`
+- a zip archive ready to copy to a customer PC
+
+The package bundles the built frontend, backend, runtime dependencies, and a portable `node.exe`. PostgreSQL is still required on the demo machine. Full instructions are in [docs/WINDOWS_DEMO_PACKAGE.md](docs/WINDOWS_DEMO_PACKAGE.md).
