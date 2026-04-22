@@ -119,6 +119,24 @@ npm run dev
 
 If you start the frontend by itself, Vite will log proxy `ECONNREFUSED` errors for `/api/...` until the backend is available on `http://localhost:3000`.
 
+## LAN Access
+
+The backend now listens on `0.0.0.0` by default, so other devices on the same LAN can reach it.
+
+Use these URLs from another device:
+
+- frontend dev server: `http://<server-ip>:5173`
+- packaged or built app served by Express: `http://<server-ip>:3000`
+
+If you want to restrict or override the bind address, set `HOST` in `.env`, for example:
+
+```env
+HOST=0.0.0.0
+PORT=3000
+```
+
+On Windows, allow inbound traffic for Node.js or open TCP ports `3000` and `5173` in Windows Defender Firewall, otherwise the app will still only appear to work locally.
+
 Build the frontend for production:
 
 ```powershell

@@ -44,9 +44,10 @@ Output:
 
 1. Copy the zip to the customer PC.
 2. Extract it.
-3. Run `Install-IMS-Demo.ps1`.
-4. If needed, edit the installed `.env` file to match local PostgreSQL credentials.
-5. Launch the app with `Start-IMS-Demo.bat` or the desktop shortcut created by the installer.
+3. For the fastest handoff, you can run `Run-IMS-Demo.bat` directly from the extracted package.
+4. For a normal install with desktop shortcuts, run `Install-IMS-Demo.ps1`.
+5. If needed, edit the installed `.env` file to match local PostgreSQL credentials.
+6. Launch the app with `Run-IMS-Demo.bat`, `Start-IMS-Demo.bat`, or the desktop shortcut created by the installer.
 
 The app will run at:
 
