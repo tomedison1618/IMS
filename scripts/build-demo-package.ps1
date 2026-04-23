@@ -64,6 +64,8 @@ $nodePath = (Get-Command node -ErrorAction Stop).Source
 Copy-Item -Path $nodePath -Destination (Join-Path $payloadRoot 'runtime\node.exe') -Force
 
 Copy-Item -Path (Join-Path $root 'installer\windows\demo.env.template') -Destination (Join-Path $payloadRoot '.env.demo.example') -Force
+Copy-Item -Path (Join-Path $root 'installer\windows\Run-IMS-Demo.bat') -Destination (Join-Path $stageRoot 'Run-IMS-Demo.bat') -Force
+Copy-Item -Path (Join-Path $root 'installer\windows\Run-IMS-Demo.bat') -Destination (Join-Path $payloadRoot 'Run-IMS-Demo.bat') -Force
 Copy-Item -Path (Join-Path $root 'installer\windows\Start-IMS-Demo.bat') -Destination (Join-Path $payloadRoot 'Start-IMS-Demo.bat') -Force
 Copy-Item -Path (Join-Path $root 'installer\windows\Stop-IMS-Demo.bat') -Destination (Join-Path $payloadRoot 'Stop-IMS-Demo.bat') -Force
 Copy-Item -Path (Join-Path $root 'installer\windows\Run-IMS-Demo.ps1') -Destination (Join-Path $payloadRoot 'scripts\Run-IMS-Demo.ps1') -Force

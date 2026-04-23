@@ -45,7 +45,11 @@ if (-not (Test-Path $envFile) -and (Test-Path $envTemplate)) {
 
 if (-not $SkipDesktopShortcuts) {
     $desktopDir = [Environment]::GetFolderPath('Desktop')
-    New-Shortcut -ShortcutPath (Join-Path $desktopDir 'IMS Demo.lnk') -TargetPath (Join-Path $InstallDir 'Start-IMS-Demo.bat') -WorkingDirectory $InstallDir -Description 'Start the IMS Demo server and open the browser.'
+    $startLauncher = Join-Path $InstallDir 'Run-IMS-Demo.bat'
+    if (-not (Test-Path $startLauncher)) {
+        $startLauncher = Join-Path $InstallDir 'Start-IMS-Demo.bat'
+    }
+    New-Shortcut -ShortcutPath (Join-Path $desktopDir 'IMS Demo.lnk') -TargetPath $startLauncher -WorkingDirectory $InstallDir -Description 'Start the IMS Demo server and open the browser.'
     New-Shortcut -ShortcutPath (Join-Path $desktopDir 'IMS Demo Stop.lnk') -TargetPath (Join-Path $InstallDir 'Stop-IMS-Demo.bat') -WorkingDirectory $InstallDir -Description 'Stop the IMS Demo server.'
 }
 
@@ -62,4 +66,4 @@ if (-not $SkipDatabaseInit) {
 Write-Host ''
 Write-Host 'Install complete.'
 Write-Host "App folder: $InstallDir"
-Write-Host 'Use Start-IMS-Demo.bat or the IMS Demo desktop shortcut to launch the demo.'
+Write-Host 'Use Run-IMS-Demo.bat, Start-IMS-Demo.bat, or the IMS Demo desktop shortcut to launch the demo.'
