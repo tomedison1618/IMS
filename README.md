@@ -13,6 +13,7 @@ Initial backend foundation for an inventory management system supporting:
 - `database/queries/backflush_bom_explosion.sql`: recursive CTE for BoM explosion/backflushing
 - `docs/api-endpoints.md`: exact REST API surface for the MVP
 - `docs/USER_MANUAL.md`: English user manual with overview and role workflows
+- `docs/USER_MANUAL_VI.md`: Vietnamese user manual for demo and operational workflows
 - `docs/IMPROVEMENT_BACKLOG.md`: prioritized product and engineering backlog for the next IMS iterations
 - `src/`: Node.js / Express backend scaffold
 

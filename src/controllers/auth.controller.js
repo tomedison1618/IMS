@@ -7,10 +7,20 @@ import { requireUserId } from '../utils/authContext.js';
 import { createHttpError } from '../utils/httpError.js';
 import { optionalString, requireObject, requireString } from '../utils/request.js';
 
+const LOGIN_EMAIL_ALIASES = new Map([
+  ['cfo@ims.local', 'finance@ims.local'],
+  ['ops.test@ims.local', 'operations@ims.local']
+]);
+
 function getAllowedRoles(user) {
   return (user?.roles ?? [])
     .map((role) => String(role.roleCode ?? '').toUpperCase())
     .filter((roleCode) => Object.values(ROLES).includes(roleCode));
+}
+
+function normalizeLoginEmail(email) {
+  const normalizedEmail = String(email ?? '').trim().toLowerCase();
+  return LOGIN_EMAIL_ALIASES.get(normalizedEmail) ?? normalizedEmail;
 }
 
 function resolveActiveRole(user, requestedRole) {
@@ -36,7 +46,7 @@ function resolveActiveRole(user, requestedRole) {
 export const loginHandler = asyncHandler(async (req, res) => {
   requireObject(req.body);
 
-  const email = requireString(req.body.email, 'email');
+  const email = normalizeLoginEmail(requireString(req.body.email, 'email'));
   const password = requireString(req.body.password, 'password');
   const requestedRole = optionalString(req.body.requestedRole);
   const user = await getUserByEmail(email);

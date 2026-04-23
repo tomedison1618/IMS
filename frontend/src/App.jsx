@@ -4,8 +4,8 @@ import PostefLogo from './PostefLogo.jsx';
 
 const DEMO_CREDENTIALS = [
   { label: 'Admin demo', email: 'admin@ims.local', password: 'Admin123!', requestedRole: 'ADMIN' },
-  { label: 'Finance demo', email: 'cfo@ims.local', password: 'Finance123!', requestedRole: 'FINANCE' },
-  { label: 'Operations demo', email: 'ops.test@ims.local', password: 'Ops123!', requestedRole: 'OPERATIONS' }
+  { label: 'Finance demo', email: 'finance@ims.local', password: 'Finance123!', requestedRole: 'FINANCE' },
+  { label: 'Operations demo', email: 'operations@ims.local', password: 'Ops123!', requestedRole: 'OPERATIONS' }
 ];
 const DEFAULT_LOGIN_FORM = {
   email: DEMO_CREDENTIALS[0].email,
@@ -72,7 +72,7 @@ const TEXT = {
     'auth.requestRole': 'Requested role',
     'auth.signIn': 'Sign in',
     'auth.demoAccount': '{role} demo',
-    'auth.demoHint': 'Demo logins: admin@ims.local / Admin123!, cfo@ims.local / Finance123!, and ops.test@ims.local / Ops123!.',
+    'auth.demoHint': 'Demo logins: admin@ims.local / Admin123!, finance@ims.local / Finance123!, and operations@ims.local / Ops123!.',
     'hero.eyebrow': 'Live warehouse + production console',
     'hero.title': 'Single-warehouse IMS frontend',
     'hero.description': 'The UI uses the current REST API directly and keeps backend RBAC visible through authenticated request roles.',
@@ -515,7 +515,7 @@ const TEXT = {
     'auth.requestRole': 'Vai trò yêu cầu',
     'auth.signIn': 'Đăng nhập',
     'auth.demoAccount': 'Tài khoản mẫu {role}',
-    'auth.demoHint': 'Tài khoản mẫu: admin@ims.local / Admin123!, cfo@ims.local / Finance123!, và ops.test@ims.local / Ops123!.',
+    'auth.demoHint': 'Tài khoản mẫu: admin@ims.local / Admin123!, finance@ims.local / Finance123!, và operations@ims.local / Ops123!.',
     'hero.eyebrow': 'Bảng điều khiển kho + sản xuất trực tiếp',
     'hero.title': 'Giao diện IMS một kho',
     'hero.description': 'Giao diện dùng trực tiếp REST API hiện tại và giữ RBAC của backend hiển thị qua chuyển đổi persona.',

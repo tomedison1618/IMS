@@ -7,7 +7,7 @@ This guide is for installing the IMS demo on a customer Windows PC.
 - Windows PC
 - PostgreSQL installed locally
 - `psql.exe` available in `PATH`, or installed in a standard PostgreSQL folder
-- the IMS demo package zip, such as `ims-demo-windows-v0.1.0.zip`
+- the IMS demo package zip, such as `ims-demo-windows-v0.1.2.zip`
 
 The IMS package already includes:
 
