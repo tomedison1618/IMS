@@ -1,0 +1,31 @@
+{
+  "name": "ims-mvp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Inventory Management System MVP backend scaffold for electronics manufacturing and distribution.",
+  "main": "src/server.js",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "dev:api": "node --watch src/server.js",
+    "dev:web": "npm --prefix frontend run dev",
+    "build:web": "npm --prefix frontend run build",
+    "preview:web": "npm --prefix frontend run preview",
+    "start": "node src/server.js",
+    "check": "node --check src/server.js",
+    "check:web": "npm --prefix frontend run build",
+    "test": "node --experimental-test-isolation=none --test tests/api/**/*.test.mjs",
+    "test:smoke": "powershell -ExecutionPolicy Bypass -File .\\scripts\\demo-smoke-test.ps1",
+    "test:full": "npm test && npm run test:smoke"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "helmet": "^7.1.0",
+    "morgan": "^1.10.0",
+    "pg": "^8.12.0"
+  }
+}
