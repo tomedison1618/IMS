@@ -40,6 +40,15 @@ const DEFAULT_FORMS = {
   customer: { customerCode: '', customerName: '', contactEmail: '', contactPhone: '' },
   item: { internalSku: '', name: '', itemType: 'RAW_MATERIAL', uom: 'EA', minStockLevel: '0', reorderQuantity: '0', leadTimeDays: '0', unitCost: '0' },
   itemEdit: { internalSku: '', name: '', itemType: 'RAW_MATERIAL', uom: 'EA', supplierSku: '', description: '', minStockLevel: '0', reorderQuantity: '0', leadTimeDays: '0', requiresLotTracking: 'false', requiresSerialTracking: 'false', unitCost: '0' },
+  inventoryImport: {
+    filePath: 'D:\\apps\\IMS\\docs\\BC ton kho samples.xlsx',
+    locationCode: 'STOR-01',
+    locationName: '',
+    locationType: 'STORAGE',
+    defaultItemType: 'RAW_MATERIAL',
+    unitCostCurrencyCode: 'VND',
+    dryRun: 'true'
+  },
   purchaseOrder: { supplierId: '', expectedReceiptDate: '', notes: '' },
   purchaseOrderLine: { itemId: '', orderedQty: '100', unitCost: '0' },
   receipt: { purchaseOrderId: '', notes: '' },
@@ -91,6 +100,7 @@ const TEXT = {
     'message.loginSuccess': 'Signed in successfully.',
     'message.sessionExpired': 'Your session is no longer valid. Sign in again.',
     'message.signedOut': 'Signed out.',
+    'message.itemRequiresBomSetup': '{sku} is now a manufactured item. Set up its BoM in Components next.',
     'nav.overview': 'Overview',
     'nav.master': 'Master',
     'nav.purchaseOrders': 'Purchase Orders',
@@ -160,7 +170,7 @@ const TEXT = {
     'common.selectCustomer': 'Select customer',
     'common.selectItem': 'Select item',
     'common.selectLocation': 'Select location',
-    'common.selectFg': 'Select FG',
+    'common.selectFg': 'Select manufactured item',
     'common.selectComponent': 'Select component',
     'itemType.RAW_MATERIAL': 'Raw Material',
     'itemType.SUB_ASSEMBLY': 'Sub-Assembly',
@@ -217,6 +227,32 @@ const TEXT = {
     'master.barcode': 'Barcode',
     'master.refreshInventory': 'Refresh inventory',
     'master.generateBarcode': 'Generate barcode',
+    'master.importTab': 'Import',
+    'master.importTitle': 'Import Ending Balances',
+    'master.importDescription': 'Load a flat ending-balance workbook into the current warehouse using the backend import module.',
+    'master.importFilePath': 'Workbook path',
+    'master.importLocationCode': 'Location code',
+    'master.importLocationName': 'Location name',
+    'master.importLocationType': 'Location type',
+    'master.importDefaultItemType': 'Default item type',
+    'master.importCurrency': 'Unit cost currency',
+    'master.importDryRun': 'Mode',
+    'master.importDryRunOption': 'Dry run only',
+    'master.importApplyOption': 'Apply import',
+    'master.importButton': 'Run import',
+    'master.importSummaryTitle': 'Last import summary',
+    'master.importRowsRead': 'Rows read',
+    'master.importItemsCreated': 'Items created',
+    'master.importItemsUpdated': 'Items updated',
+    'master.importBalancesCreated': 'Balances created',
+    'master.importBalancesAdjusted': 'Balances adjusted',
+    'master.importTransactionsCreated': 'Transactions created',
+    'master.importPreviewTitle': 'Preview rows',
+    'master.importWarningsTitle': 'Duplicate SKU warnings',
+    'master.importWarningsDescription': 'If a SKU appears more than once in the workbook, the importer keeps the current behavior: the last row wins for the final on-hand balance.',
+    'master.importWarningRows': 'Rows',
+    'master.importWarningBehavior': 'Behavior',
+    'master.importWarningBehaviorLastRowWins': 'Last row wins',
     'master.editItem': 'Edit item',
     'master.saveItem': 'Save item',
     'master.cancelEdit': 'Cancel edit',
@@ -339,7 +375,7 @@ const TEXT = {
     'counts.recentCycleCountsTitle': 'Recent Cycle Counts',
     'counts.recentCycleCountsDescription': 'Operations submits, finance/admin resolves mismatches.',
     'manufacturing.bomTitle': 'Bill of Materials',
-    'manufacturing.bomDescription': 'Create and activate a versioned BoM for a finished good.',
+    'manufacturing.bomDescription': 'Create and activate a versioned BoM for a manufactured item.',
     'manufacturing.bomWorkspaceTitle': 'BoM Workspace',
     'manufacturing.bomWorkspaceDescription': 'Create, review, and maintain BoMs inside this tab.',
     'manufacturing.openBomWorkspace': 'Open BoM workspace',
@@ -350,7 +386,7 @@ const TEXT = {
     'manufacturing.selectedBom': 'Selected BoM',
     'manufacturing.noBomLinked': 'No BoM selected',
     'manufacturing.findBomTitle': 'Find a BoM',
-    'manufacturing.findBomDescription': 'Search existing BoMs by finished good, SKU, or version before creating a new one.',
+    'manufacturing.findBomDescription': 'Search existing BoMs by parent item, SKU, or version before creating a new one.',
     'manufacturing.createIfMissing': 'Create new BoM',
     'manufacturing.cancelCreate': 'Back to library',
     'manufacturing.reviewBomTitle': 'Review and Edit BoM',
@@ -361,7 +397,7 @@ const TEXT = {
     'manufacturing.componentEditorEditDescription': 'Adjust the selected line, or clear the selection to add a new component.',
     'manufacturing.noBomReviewState': 'Select a BoM from the library, or create a new one if it does not exist.',
     'manufacturing.newBomTitle': 'Create New BoM',
-    'manufacturing.newBomDescription': 'Start a new version for a finished good. After creation, continue in the maintenance area.',
+    'manufacturing.newBomDescription': 'Start a new version for a manufactured item. After creation, continue in the maintenance area.',
     'manufacturing.addComponentTitle': 'Add Component Line',
     'manufacturing.addComponentDescription': 'Add a new component to the selected BoM.',
     'manufacturing.selectionGuideTitle': 'BoM Workflow',
@@ -374,14 +410,14 @@ const TEXT = {
     'manufacturing.selectedLineTitle': 'Selected Line',
     'manufacturing.selectedLineDescription': 'Review the active line before updating or deleting it.',
     'manufacturing.noSelectedLineSummary': 'Select a component line to edit it.',
-    'manufacturing.parentFinishedGood': 'Parent finished good',
+    'manufacturing.parentFinishedGood': 'Parent item',
     'manufacturing.component': 'Component',
     'manufacturing.createBom': 'Create BoM',
     'manufacturing.addLine': 'Add line',
     'manufacturing.activate': 'Activate',
     'manufacturing.productionTitle': 'Production and Backflush',
-    'manufacturing.productionDescription': 'Record finished goods, then deduct recursive raw demand.',
-    'manufacturing.finishedGood': 'Finished good',
+    'manufacturing.productionDescription': 'Record manufactured output, then deduct recursive raw demand.',
+    'manufacturing.finishedGood': 'Manufactured item',
     'manufacturing.plannedQty': 'Planned qty',
     'manufacturing.fgLocation': 'FG location',
     'manufacturing.completedQty': 'Completed qty',
@@ -473,6 +509,7 @@ const TEXT = {
     'action.productionScrapSignoff': 'production scrap signoff',
     'action.warehouseScrapSignoff': 'warehouse scrap signoff',
     'action.barcodeGeneration': 'barcode generation',
+    'action.inventoryImport': 'inventory import',
     'error.createPickFirst': 'Create a pick first.',
     'error.selectUserFirst': 'Select a user first.',
     'error.selectItemFirst': 'Select an item first.',
@@ -535,6 +572,7 @@ const TEXT = {
     'message.loginSuccess': 'Đăng nhập thành công.',
     'message.sessionExpired': 'Phiên đăng nhập không còn hiệu lực. Vui lòng đăng nhập lại.',
     'message.signedOut': 'Đã đăng xuất.',
+    'message.itemRequiresBomSetup': '{sku} hiện là mặt hàng sản xuất. Hãy thiết lập định mức trong tab Thành phần tiếp theo.',
     'nav.overview': 'Tổng quan',
     'nav.master': 'Danh mục',
     'nav.purchaseOrders': 'Đơn mua hàng',
@@ -608,7 +646,7 @@ const TEXT = {
     'common.selectCustomer': 'Chọn khách hàng',
     'common.selectItem': 'Chọn mặt hàng',
     'common.selectLocation': 'Chọn vị trí',
-    'common.selectFg': 'Chọn thành phẩm',
+    'common.selectFg': 'Chọn mặt hàng sản xuất',
     'common.selectComponent': 'Chọn linh kiện',
     'itemType.RAW_MATERIAL': 'Nguyên vật liệu',
     'itemType.SUB_ASSEMBLY': 'Bán thành phẩm',
@@ -665,6 +703,32 @@ const TEXT = {
     'master.barcode': 'Mã vạch',
     'master.refreshInventory': 'Làm mới tồn kho',
     'master.generateBarcode': 'Tạo mã vạch',
+    'master.importTab': 'Nhập tồn kho',
+    'master.importTitle': 'Nhập số dư cuối kỳ',
+    'master.importDescription': 'Tải workbook số dư cuối kỳ dạng phẳng vào kho hiện tại bằng bộ import phía backend.',
+    'master.importFilePath': 'Đường dẫn workbook',
+    'master.importLocationCode': 'Mã vị trí',
+    'master.importLocationName': 'Tên vị trí',
+    'master.importLocationType': 'Loại vị trí',
+    'master.importDefaultItemType': 'Loại mặt hàng mặc định',
+    'master.importCurrency': 'Tiền tệ đơn giá',
+    'master.importDryRun': 'Chế độ',
+    'master.importDryRunOption': 'Chỉ chạy thử',
+    'master.importApplyOption': 'Áp dụng nhập',
+    'master.importButton': 'Chạy nhập dữ liệu',
+    'master.importSummaryTitle': 'Tóm tắt lần nhập gần nhất',
+    'master.importRowsRead': 'Số dòng đọc',
+    'master.importItemsCreated': 'Mặt hàng tạo mới',
+    'master.importItemsUpdated': 'Mặt hàng cập nhật',
+    'master.importBalancesCreated': 'Số dư tạo mới',
+    'master.importBalancesAdjusted': 'Số dư điều chỉnh',
+    'master.importTransactionsCreated': 'Giao dịch tạo mới',
+    'master.importPreviewTitle': 'Dòng xem trước',
+    'master.importWarningsTitle': 'Cảnh báo trùng mã hàng',
+    'master.importWarningsDescription': 'Nếu một mã hàng xuất hiện nhiều hơn một lần trong workbook, bộ import sẽ giữ nguyên hành vi hiện tại: dòng cuối cùng quyết định tồn cuối cùng.',
+    'master.importWarningRows': 'Dòng',
+    'master.importWarningBehavior': 'Hành vi',
+    'master.importWarningBehaviorLastRowWins': 'Dòng cuối cùng được giữ lại',
     'master.editItem': 'Sửa mặt hàng',
     'master.saveItem': 'Lưu mặt hàng',
     'master.cancelEdit': 'Hủy chỉnh sửa',
@@ -787,15 +851,15 @@ const TEXT = {
     'counts.recentCycleCountsTitle': 'Phiếu kiểm gần đây',
     'counts.recentCycleCountsDescription': 'Vận hành gửi phiếu, tài chính/quản trị xử lý chênh lệch.',
     'manufacturing.bomTitle': 'Định mức nguyên vật liệu',
-    'manufacturing.bomDescription': 'Tạo và kích hoạt định mức có phiên bản cho thành phẩm.',
-    'manufacturing.parentFinishedGood': 'Thành phẩm cha',
+    'manufacturing.bomDescription': 'Tạo và kích hoạt định mức có phiên bản cho mặt hàng sản xuất.',
+    'manufacturing.parentFinishedGood': 'Mặt hàng cha',
     'manufacturing.component': 'Linh kiện',
     'manufacturing.createBom': 'Tạo định mức',
     'manufacturing.addLine': 'Thêm dòng',
     'manufacturing.activate': 'Kích hoạt',
     'manufacturing.productionTitle': 'Sản xuất và xuất trừ nguyên liệu',
-    'manufacturing.productionDescription': 'Ghi nhận thành phẩm, sau đó trừ nguyên vật liệu theo nhu cầu đệ quy.',
-    'manufacturing.finishedGood': 'Thành phẩm',
+    'manufacturing.productionDescription': 'Ghi nhận đầu ra sản xuất, sau đó trừ nguyên vật liệu theo nhu cầu đệ quy.',
+    'manufacturing.finishedGood': 'Mặt hàng sản xuất',
     'manufacturing.plannedQty': 'SL kế hoạch',
     'manufacturing.fgLocation': 'Vị trí thành phẩm',
     'manufacturing.completedQty': 'SL hoàn thành',
@@ -887,6 +951,7 @@ const TEXT = {
     'action.productionScrapSignoff': 'ký phế phẩm phía sản xuất',
     'action.warehouseScrapSignoff': 'ký phế phẩm phía kho',
     'action.barcodeGeneration': 'tạo mã vạch',
+    'action.inventoryImport': 'nhập tồn kho',
     'manufacturing.bomWorkspaceTitle': 'Không gian định mức',
     'manufacturing.bomWorkspaceDescription': 'Tạo, xem và quản lý định mức ngay trong tab này.',
     'manufacturing.openBomWorkspace': 'Mở cửa sổ định mức',
@@ -1422,6 +1487,7 @@ export default function App() {
   const [session, setSession] = useState(loadStoredSession);
   const [section, setSection] = useState('overview');
   const [masterTab, setMasterTab] = useState('inventory');
+  const [isEditingSelectedItem, setIsEditingSelectedItem] = useState(false);
   const [itemDetailTab, setItemDetailTab] = useState('overview');
   const [manufacturingTab, setManufacturingTab] = useState('production');
   const [bomWorkspaceMode, setBomWorkspaceMode] = useState('browse');
@@ -1430,6 +1496,7 @@ export default function App() {
   const [message, setMessage] = useState(() => createTranslator(loadStoredLanguage())('message.ready'));
   const [selected, setSelected] = useState({});
   const [inventoryDetail, setInventoryDetail] = useState(null);
+  const [inventoryImportSummary, setInventoryImportSummary] = useState(null);
   const [itemBomState, setItemBomState] = useState({ status: 'idle', bom: null });
   const [purchaseOrderDetail, setPurchaseOrderDetail] = useState(null);
   const [salesOrderDetail, setSalesOrderDetail] = useState(null);
@@ -1441,6 +1508,8 @@ export default function App() {
   const [itemSearch, setItemSearch] = useState('');
   const [bomLibrarySearch, setBomLibrarySearch] = useState('');
   const inventoryDetailRef = useRef(null);
+  const inventoryWorkspaceRef = useRef(null);
+  const pendingWorkspaceScrollRef = useRef(false);
   const deferredItemSearch = useDeferredValue(itemSearch);
   const deferredBomLibrarySearch = useDeferredValue(bomLibrarySearch);
   const [data, setData] = useState(EMPTY_DATA);
@@ -2180,6 +2249,23 @@ export default function App() {
     inventoryDetailRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [inventoryDetail]);
 
+  useEffect(() => {
+    setIsEditingSelectedItem(false);
+  }, [selected.itemId]);
+
+  useEffect(() => {
+    if (
+      !pendingWorkspaceScrollRef.current ||
+      itemDetailTab !== 'components' ||
+      !inventoryWorkspaceRef.current
+    ) {
+      return;
+    }
+
+    pendingWorkspaceScrollRef.current = false;
+    inventoryWorkspaceRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [itemDetailTab, inventoryDetail?.item?.itemId]);
+
   async function refreshInventory(itemId) {
     if (!itemId) return;
     const itemFilter = buildQueryString({ itemId, limit: 25 });
@@ -2278,11 +2364,32 @@ export default function App() {
     syncItemState(response.data.item);
   }
 
+  async function importEndingBalances() {
+    const response = await run('inventoryImport', () =>
+      api.request('/inventory/import-ending-balances', {
+        method: 'POST',
+        body: {
+          filePath: forms.inventoryImport.filePath,
+          locationCode: forms.inventoryImport.locationCode || null,
+          locationName: forms.inventoryImport.locationName || null,
+          locationType: forms.inventoryImport.locationType,
+          defaultItemType: forms.inventoryImport.defaultItemType,
+          unitCostCurrencyCode: forms.inventoryImport.unitCostCurrencyCode,
+          dryRun: forms.inventoryImport.dryRun === 'true'
+        }
+      })
+    );
+
+    setInventoryImportSummary(response.data);
+    setMasterTab('import');
+  }
+
   async function saveSelectedItem() {
     if (!selected.itemId) {
       fail('error.selectItemFirst');
     }
 
+    const previousItemType = inventoryDetail?.item?.itemType ?? null;
     const response = await run('itemUpdate', () =>
       {
         const payload = {
@@ -2314,12 +2421,32 @@ export default function App() {
         });
       }
     );
-    syncItemState(response.data);
-    setItemDetailTab('overview');
+    const updatedItem = response.data?.item ?? response.data;
+    syncItemState(updatedItem);
+    await refreshInventory(updatedItem?.itemId ?? selected.itemId);
+    setIsEditingSelectedItem(false);
+
+    if (
+      updatedItem?.itemId &&
+      ['SUB_ASSEMBLY', 'FINISHED_GOOD'].includes(updatedItem.itemType) &&
+      updatedItem.itemType !== previousItemType
+    ) {
+      const bomLookup = await api.request(`/boms?${buildQueryString({ parentItemId: updatedItem.itemId, limit: 1 })}`);
+
+      if ((bomLookup.count ?? bomLookup.data?.length ?? 0) === 0) {
+        pendingWorkspaceScrollRef.current = true;
+        setItemDetailTab('components');
+        setMessage(t('message.itemRequiresBomSetup', { sku: updatedItem.internalSku }));
+      }
+    }
+  }
+
+  function openItemEditTab() {
+    setIsEditingSelectedItem(true);
   }
 
   function cancelItemEdit() {
-    setItemDetailTab('overview');
+    setIsEditingSelectedItem(false);
     setForms((current) => ({
       ...current,
       itemEdit: inventoryDetail?.item ? createItemEditForm(inventoryDetail.item) : DEFAULT_FORMS.itemEdit
@@ -3225,6 +3352,15 @@ export default function App() {
               >
                 {t('master.createItemTitle')}
               </button>
+              {adminVisible ? (
+                <button
+                  type="button"
+                  className={masterTab === 'import' ? 'button' : 'button button--ghost'}
+                  onClick={() => setMasterTab('import')}
+                >
+                  {t('master.importTab')}
+                </button>
+              ) : null}
               <button
                 type="button"
                 className={masterTab === 'partners' ? 'button' : 'button button--ghost'}
@@ -3280,7 +3416,7 @@ export default function App() {
                         <button type="button" className="button button--secondary" onClick={() => refreshInventory(selected.itemId)}>{t('master.refreshInventory')}</button>
                         <button type="button" className="button button--ghost" onClick={generateBarcodeForSelectedItem}>{t('master.generateBarcode')}</button>
                         {canMaintainItems ? (
-                          <button type="button" className={itemDetailTab === 'edit' ? 'button button--secondary' : 'button button--ghost'} onClick={() => setItemDetailTab('edit')}>{t('master.editItem')}</button>
+                          <button type="button" className={isEditingSelectedItem ? 'button button--secondary' : 'button button--ghost'} onClick={openItemEditTab}>{t('master.editItem')}</button>
                         ) : null}
                         {inventoryDetail.item.isActive ? (
                           <button type="button" className="button button--ghost" onClick={archiveSelectedItem}>{t('master.archiveItem')}</button>
@@ -3314,6 +3450,62 @@ export default function App() {
                           <small>{itemBomState.status === 'ready' ? `${t('master.componentCount')}: ${formatNumber(itemBomState.bom.lineCount ?? itemBomState.bom.lines?.length ?? 0)}` : t('master.componentsDescription')}</small>
                         </div>
                       </div>
+                      {isEditingSelectedItem && canMaintainItems ? (
+                        <div className="subpanel">
+                          <div className="panel__header">
+                            <div>
+                              <h2>{t('master.itemSettingsTitle')}</h2>
+                              <p>{t('master.itemSettingsDescription')}</p>
+                            </div>
+                          </div>
+                          <div className="form-grid">
+                            <label className="field"><span>{t('master.internalSku')}</span><input value={forms.itemEdit.internalSku} onChange={(event) => updateForm('itemEdit', 'internalSku', event.target.value)} /></label>
+                            <label className="field"><span>{t('common.name')}</span><input value={forms.itemEdit.name} onChange={(event) => updateForm('itemEdit', 'name', event.target.value)} /></label>
+                            <label className="field">
+                              <span>{t('master.itemType')}</span>
+                              <select value={forms.itemEdit.itemType} onChange={(event) => updateForm('itemEdit', 'itemType', event.target.value)}>
+                                <option value="RAW_MATERIAL">{t('itemType.RAW_MATERIAL')}</option>
+                                <option value="SUB_ASSEMBLY">{t('itemType.SUB_ASSEMBLY')}</option>
+                                <option value="FINISHED_GOOD">{t('itemType.FINISHED_GOOD')}</option>
+                              </select>
+                            </label>
+                            <label className="field"><span>{t('master.uom')}</span><input value={forms.itemEdit.uom} onChange={(event) => updateForm('itemEdit', 'uom', event.target.value)} /></label>
+                            <label className="field"><span>{t('master.supplierSku')}</span><input value={forms.itemEdit.supplierSku} onChange={(event) => updateForm('itemEdit', 'supplierSku', event.target.value)} /></label>
+                            <label className="field">
+                              <span>{t('master.unitCost')}</span>
+                              <input
+                                value={financeVisible ? forms.itemEdit.unitCost : t('common.restricted')}
+                                disabled={!financeVisible}
+                                placeholder={t('master.unitCostPlaceholder')}
+                                title={t('master.unitCostHint')}
+                                onChange={(event) => updateForm('itemEdit', 'unitCost', event.target.value)}
+                              />
+                            </label>
+                            <label className="field"><span>{t('master.minStock')}</span><input value={forms.itemEdit.minStockLevel} onChange={(event) => updateForm('itemEdit', 'minStockLevel', event.target.value)} /></label>
+                            <label className="field"><span>{t('master.reorderQty')}</span><input value={forms.itemEdit.reorderQuantity} onChange={(event) => updateForm('itemEdit', 'reorderQuantity', event.target.value)} /></label>
+                            <label className="field"><span>{t('master.leadTime')}</span><input value={forms.itemEdit.leadTimeDays} onChange={(event) => updateForm('itemEdit', 'leadTimeDays', event.target.value)} /></label>
+                            <label className="field">
+                              <span>{t('master.lotTracking')}</span>
+                              <select value={forms.itemEdit.requiresLotTracking} onChange={(event) => updateForm('itemEdit', 'requiresLotTracking', event.target.value)}>
+                                <option value="false">{t('master.trackingNotRequired')}</option>
+                                <option value="true">{t('master.trackingRequired')}</option>
+                              </select>
+                            </label>
+                            <label className="field">
+                              <span>{t('master.serialTracking')}</span>
+                              <select value={forms.itemEdit.requiresSerialTracking} onChange={(event) => updateForm('itemEdit', 'requiresSerialTracking', event.target.value)}>
+                                <option value="false">{t('master.trackingNotRequired')}</option>
+                                <option value="true">{t('master.trackingRequired')}</option>
+                              </select>
+                            </label>
+                            <label className="field field--full"><span>{t('master.descriptionLabel')}</span><input value={forms.itemEdit.description} onChange={(event) => updateForm('itemEdit', 'description', event.target.value)} /></label>
+                          </div>
+                          <div className="button-row">
+                            <button type="button" className="button" onClick={saveSelectedItem} disabled={!forms.itemEdit.internalSku || !forms.itemEdit.name || !forms.itemEdit.uom}>{t('master.saveItem')}</button>
+                            <button type="button" className="button button--ghost" onClick={cancelItemEdit}>{t('master.cancelEdit')}</button>
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
                   ) : (
                     <div className="detail-card inventory-shell__placeholder">
@@ -3323,7 +3515,7 @@ export default function App() {
                   )}
                 </div>
                 {inventoryDetail ? (
-                  <div className="subpanel stack inventory-workspace">
+                  <div ref={inventoryWorkspaceRef} className="subpanel stack inventory-workspace">
                     <div className="toggle-row">
                       <button
                         type="button"
@@ -3362,15 +3554,6 @@ export default function App() {
                       >
                         {t('master.serialsTab')}
                       </button>
-                      {canMaintainItems ? (
-                        <button
-                          type="button"
-                          className={itemDetailTab === 'edit' ? 'button' : 'button button--ghost'}
-                          onClick={() => setItemDetailTab('edit')}
-                        >
-                          {t('master.editTab')}
-                        </button>
-                      ) : null}
                     </div>
 
                     {itemDetailTab === 'overview' ? (
@@ -3587,62 +3770,6 @@ export default function App() {
                       </div>
                     ) : null}
 
-                    {itemDetailTab === 'edit' && canMaintainItems ? (
-                      <div className="subpanel">
-                        <div className="panel__header">
-                          <div>
-                            <h2>{t('master.itemSettingsTitle')}</h2>
-                            <p>{t('master.itemSettingsDescription')}</p>
-                          </div>
-                        </div>
-                        <div className="form-grid">
-                          <label className="field"><span>{t('master.internalSku')}</span><input value={forms.itemEdit.internalSku} onChange={(event) => updateForm('itemEdit', 'internalSku', event.target.value)} /></label>
-                          <label className="field"><span>{t('common.name')}</span><input value={forms.itemEdit.name} onChange={(event) => updateForm('itemEdit', 'name', event.target.value)} /></label>
-                          <label className="field">
-                            <span>{t('master.itemType')}</span>
-                            <select value={forms.itemEdit.itemType} onChange={(event) => updateForm('itemEdit', 'itemType', event.target.value)}>
-                              <option value="RAW_MATERIAL">{t('itemType.RAW_MATERIAL')}</option>
-                              <option value="SUB_ASSEMBLY">{t('itemType.SUB_ASSEMBLY')}</option>
-                              <option value="FINISHED_GOOD">{t('itemType.FINISHED_GOOD')}</option>
-                            </select>
-                          </label>
-                          <label className="field"><span>{t('master.uom')}</span><input value={forms.itemEdit.uom} onChange={(event) => updateForm('itemEdit', 'uom', event.target.value)} /></label>
-                          <label className="field"><span>{t('master.supplierSku')}</span><input value={forms.itemEdit.supplierSku} onChange={(event) => updateForm('itemEdit', 'supplierSku', event.target.value)} /></label>
-                          <label className="field">
-                            <span>{t('master.unitCost')}</span>
-                            <input
-                              value={financeVisible ? forms.itemEdit.unitCost : t('common.restricted')}
-                              disabled={!financeVisible}
-                              placeholder={t('master.unitCostPlaceholder')}
-                              title={t('master.unitCostHint')}
-                              onChange={(event) => updateForm('itemEdit', 'unitCost', event.target.value)}
-                            />
-                          </label>
-                          <label className="field"><span>{t('master.minStock')}</span><input value={forms.itemEdit.minStockLevel} onChange={(event) => updateForm('itemEdit', 'minStockLevel', event.target.value)} /></label>
-                          <label className="field"><span>{t('master.reorderQty')}</span><input value={forms.itemEdit.reorderQuantity} onChange={(event) => updateForm('itemEdit', 'reorderQuantity', event.target.value)} /></label>
-                          <label className="field"><span>{t('master.leadTime')}</span><input value={forms.itemEdit.leadTimeDays} onChange={(event) => updateForm('itemEdit', 'leadTimeDays', event.target.value)} /></label>
-                          <label className="field">
-                            <span>{t('master.lotTracking')}</span>
-                            <select value={forms.itemEdit.requiresLotTracking} onChange={(event) => updateForm('itemEdit', 'requiresLotTracking', event.target.value)}>
-                              <option value="false">{t('master.trackingNotRequired')}</option>
-                              <option value="true">{t('master.trackingRequired')}</option>
-                            </select>
-                          </label>
-                          <label className="field">
-                            <span>{t('master.serialTracking')}</span>
-                            <select value={forms.itemEdit.requiresSerialTracking} onChange={(event) => updateForm('itemEdit', 'requiresSerialTracking', event.target.value)}>
-                              <option value="false">{t('master.trackingNotRequired')}</option>
-                              <option value="true">{t('master.trackingRequired')}</option>
-                            </select>
-                          </label>
-                          <label className="field field--full"><span>{t('master.descriptionLabel')}</span><input value={forms.itemEdit.description} onChange={(event) => updateForm('itemEdit', 'description', event.target.value)} /></label>
-                        </div>
-                        <div className="button-row">
-                          <button type="button" className="button" onClick={saveSelectedItem} disabled={!forms.itemEdit.internalSku || !forms.itemEdit.name || !forms.itemEdit.uom}>{t('master.saveItem')}</button>
-                          <button type="button" className="button button--ghost" onClick={cancelItemEdit}>{t('master.cancelEdit')}</button>
-                        </div>
-                      </div>
-                    ) : null}
                   </div>
                 ) : null}
               </div>
@@ -3685,6 +3812,127 @@ export default function App() {
                 <div className="button-row">
                   <button type="button" className="button" onClick={createItem}>{t('master.createItem')}</button>
                 </div>
+              </div>
+            ) : null}
+
+            {masterTab === 'import' && adminVisible ? (
+              <div className="panel">
+                <div className="panel__header">
+                  <div>
+                    <h2>{t('master.importTitle')}</h2>
+                    <p>{t('master.importDescription')}</p>
+                  </div>
+                </div>
+                <div className="form-grid">
+                  <label className="field field--full">
+                    <span>{t('master.importFilePath')}</span>
+                    <input value={forms.inventoryImport.filePath} onChange={(event) => updateForm('inventoryImport', 'filePath', event.target.value)} />
+                  </label>
+                  <label className="field">
+                    <span>{t('master.importLocationCode')}</span>
+                    <input value={forms.inventoryImport.locationCode} onChange={(event) => updateForm('inventoryImport', 'locationCode', event.target.value)} />
+                  </label>
+                  <label className="field">
+                    <span>{t('master.importLocationName')}</span>
+                    <input value={forms.inventoryImport.locationName} onChange={(event) => updateForm('inventoryImport', 'locationName', event.target.value)} />
+                  </label>
+                  <label className="field">
+                    <span>{t('master.importLocationType')}</span>
+                    <select value={forms.inventoryImport.locationType} onChange={(event) => updateForm('inventoryImport', 'locationType', event.target.value)}>
+                      <option value="RECEIVING">RECEIVING</option>
+                      <option value="STORAGE">STORAGE</option>
+                      <option value="PICK_FACE">PICK_FACE</option>
+                      <option value="STAGING">STAGING</option>
+                      <option value="PRODUCTION">PRODUCTION</option>
+                      <option value="SHIPPING">SHIPPING</option>
+                      <option value="QUARANTINE">QUARANTINE</option>
+                    </select>
+                  </label>
+                  <label className="field">
+                    <span>{t('master.importDefaultItemType')}</span>
+                    <select value={forms.inventoryImport.defaultItemType} onChange={(event) => updateForm('inventoryImport', 'defaultItemType', event.target.value)}>
+                      <option value="RAW_MATERIAL">{t('itemType.RAW_MATERIAL')}</option>
+                      <option value="SUB_ASSEMBLY">{t('itemType.SUB_ASSEMBLY')}</option>
+                      <option value="FINISHED_GOOD">{t('itemType.FINISHED_GOOD')}</option>
+                    </select>
+                  </label>
+                  <label className="field">
+                    <span>{t('master.importCurrency')}</span>
+                    <select value={forms.inventoryImport.unitCostCurrencyCode} onChange={(event) => updateForm('inventoryImport', 'unitCostCurrencyCode', event.target.value)}>
+                      {SUPPORTED_ITEM_CURRENCIES.map((currencyCode) => <option key={currencyCode} value={currencyCode}>{currencyCode}</option>)}
+                    </select>
+                  </label>
+                  <label className="field">
+                    <span>{t('master.importDryRun')}</span>
+                    <select value={forms.inventoryImport.dryRun} onChange={(event) => updateForm('inventoryImport', 'dryRun', event.target.value)}>
+                      <option value="true">{t('master.importDryRunOption')}</option>
+                      <option value="false">{t('master.importApplyOption')}</option>
+                    </select>
+                  </label>
+                </div>
+                <div className="button-row">
+                  <button type="button" className="button" onClick={importEndingBalances} disabled={!forms.inventoryImport.filePath}>
+                    {t('master.importButton')}
+                  </button>
+                </div>
+                {inventoryImportSummary ? (
+                  <div className="subpanel">
+                    <div className="panel__header">
+                      <div>
+                        <h2>{t('master.importSummaryTitle')}</h2>
+                        <p>{inventoryImportSummary.workbookPath}</p>
+                      </div>
+                    </div>
+                    <div className="metrics-grid">
+                      <div className="metric"><span>{t('master.importRowsRead')}</span><strong>{formatNumber(inventoryImportSummary.totals?.rowsRead ?? 0)}</strong></div>
+                      <div className="metric"><span>{t('master.importItemsCreated')}</span><strong>{formatNumber(inventoryImportSummary.totals?.itemsCreated ?? 0)}</strong></div>
+                      <div className="metric"><span>{t('master.importItemsUpdated')}</span><strong>{formatNumber(inventoryImportSummary.totals?.itemsUpdated ?? 0)}</strong></div>
+                      <div className="metric"><span>{t('master.importBalancesCreated')}</span><strong>{formatNumber(inventoryImportSummary.totals?.balancesCreated ?? 0)}</strong></div>
+                      <div className="metric"><span>{t('master.importBalancesAdjusted')}</span><strong>{formatNumber(inventoryImportSummary.totals?.balancesAdjusted ?? 0)}</strong></div>
+                      <div className="metric"><span>{t('master.importTransactionsCreated')}</span><strong>{formatNumber(inventoryImportSummary.totals?.transactionsCreated ?? 0)}</strong></div>
+                    </div>
+                    {inventoryImportSummary.warnings?.hasDuplicates ? (
+                      <div className="stack">
+                        <div>
+                          <h3>{t('master.importWarningsTitle')}</h3>
+                          <p>{t('master.importWarningsDescription')}</p>
+                        </div>
+                        <Table
+                          rowKey="internalSku"
+                          rows={inventoryImportSummary.warnings.duplicateSkus}
+                          emptyMessage={t('common.noRecords')}
+                          columns={[
+                            { key: 'internalSku', label: t('common.sku') },
+                            { key: 'count', label: t('common.quantity'), render: (row) => formatNumber(row.count) },
+                            { key: 'rowNumbers', label: t('master.importWarningRows'), render: (row) => row.rowNumbers.join(', ') },
+                            {
+                              key: 'behavior',
+                              label: t('master.importWarningBehavior'),
+                              render: () => t('master.importWarningBehaviorLastRowWins')
+                            }
+                          ]}
+                        />
+                      </div>
+                    ) : null}
+                    {Array.isArray(inventoryImportSummary.preview) && inventoryImportSummary.preview.length ? (
+                      <div className="stack">
+                        <p className="inline-note">{t('master.importPreviewTitle')}</p>
+                        <Table
+                          rowKey="rowNumber"
+                          rows={inventoryImportSummary.preview}
+                          emptyMessage={t('common.noRecords')}
+                          columns={[
+                            { key: 'rowNumber', label: '#' },
+                            { key: 'internalSku', label: t('common.sku') },
+                            { key: 'itemName', label: t('common.name') },
+                            { key: 'uom', label: t('master.uom') },
+                            { key: 'quantityOnHand', label: t('common.onHand'), render: (row) => formatNumber(row.quantityOnHand) }
+                          ]}
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
             ) : null}
 
@@ -4184,7 +4432,9 @@ export default function App() {
                             }}
                           >
                             <option value="">{t('common.selectFg')}</option>
-                            {data.items.filter((item) => item.itemType === 'FINISHED_GOOD').map((item) => <option key={item.itemId} value={item.itemId}>{item.internalSku} - {item.name}</option>)}
+                            {data.items
+                              .filter((item) => ['SUB_ASSEMBLY', 'FINISHED_GOOD'].includes(item.itemType))
+                              .map((item) => <option key={item.itemId} value={item.itemId}>{item.internalSku} - {item.name}</option>)}
                           </select>
                         </label>
                         <label className="field">

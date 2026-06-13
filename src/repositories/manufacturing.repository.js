@@ -486,6 +486,9 @@ export async function createBom({ parentItemId, versionName, notes, createdBy })
     await client.query('BEGIN');
     const item = await findItemByIdOrSku(client, parentItemId);
     if (!item) throw createHttpError(404, 'Parent item not found.');
+    if (!['SUB_ASSEMBLY', 'FINISHED_GOOD'].includes(item.item_type)) {
+      throw createHttpError(409, 'BoMs can only be created for SUB_ASSEMBLY or FINISHED_GOOD items.');
+    }
 
     const { rows } = await client.query(
       `
@@ -577,6 +580,12 @@ export async function addBomLine({ bomId, componentItemId, quantity, scrapAllowa
     if (!bom) throw createHttpError(404, 'BoM not found.');
     const component = await findItemByIdOrSku(client, componentItemId);
     if (!component) throw createHttpError(404, 'Component item not found.');
+    if (component.item_type === 'FINISHED_GOOD') {
+      throw createHttpError(409, 'FINISHED_GOOD items cannot be used as BoM components.');
+    }
+    if (component.item_id === bom.parent_item_id) {
+      throw createHttpError(409, 'An item cannot be added as a component of its own BoM.');
+    }
     const { rows: nextLineRows } = await client.query(
       `SELECT COALESCE(MAX(line_number), 0) + 1 AS next_line_number FROM bom_lines WHERE bom_id = $1::uuid`,
       [bomId]
@@ -611,7 +620,15 @@ export async function updateBomLine({ bomId, lineId, quantity, scrapAllowancePct
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    const bom = await getBomHeader(client, bomId);
+    if (!bom) throw createHttpError(404, 'BoM not found.');
     const component = componentItemId ? await findItemByIdOrSku(client, componentItemId) : null;
+    if (component?.item_type === 'FINISHED_GOOD') {
+      throw createHttpError(409, 'FINISHED_GOOD items cannot be used as BoM components.');
+    }
+    if (component?.item_id === bom.parent_item_id) {
+      throw createHttpError(409, 'An item cannot be added as a component of its own BoM.');
+    }
     await client.query(
       `
         UPDATE bom_lines
@@ -719,9 +736,12 @@ export async function createProductionOrder({ finishedGoodItemId, bomId, quantit
   try {
     await client.query('BEGIN');
     const item = await findItemByIdOrSku(client, finishedGoodItemId);
-    if (!item) throw createHttpError(404, 'Finished good item not found.');
+    if (!item) throw createHttpError(404, 'Manufactured item not found.');
+    if (!['SUB_ASSEMBLY', 'FINISHED_GOOD'].includes(item.item_type)) {
+      throw createHttpError(409, 'Production orders can only be created for SUB_ASSEMBLY or FINISHED_GOOD items.');
+    }
     const resolvedBomId = bomId ?? (await getActiveBomForItem(client, item.item_id));
-    if (!resolvedBomId) throw createHttpError(409, 'No active BoM found for finished good.');
+    if (!resolvedBomId) throw createHttpError(409, 'No active BoM found for the selected manufactured item.');
 
     const { rows } = await client.query(
       `

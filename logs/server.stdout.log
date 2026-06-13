@@ -1,0 +1,9 @@
+IMS API listening on http://0.0.0.0:3000
+[0mGET /health [32m200[0m 2.210 ms - 15[0m
+[0mGET / [36m304[0m 4.527 ms - -[0m
+[0mGET /assets/index-DEfxWrIW.js [36m304[0m 1.016 ms - -[0m
+[0mGET /assets/index-CvDWyUM3.css [36m304[0m 0.519 ms - -[0m
+[0mGET /health [32m200[0m 0.408 ms - 15[0m
+[0mGET / [36m304[0m 1.619 ms - -[0m
+[0mGET /assets/index-DEfxWrIW.js [36m304[0m 0.817 ms - -[0m
+[0mGET /assets/index-CvDWyUM3.css [36m304[0m 0.828 ms - -[0m

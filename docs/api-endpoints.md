@@ -47,6 +47,8 @@ Base path: `/api/v1`
 
 ## Inventory
 
+- `POST /inventory/import-ending-balances`
+  - body: `filePath`, optional `locationCode`, `locationName`, `locationType`, `defaultItemType`, `unitCostCurrencyCode`, `dryRun`
 - `GET /inventory/balances`
 - `GET /inventory/transactions`
 - `GET /inventory/lots`

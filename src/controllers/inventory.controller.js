@@ -10,10 +10,12 @@ import {
   serializeInventorySerial,
   serializeInventoryTransaction
 } from '../serializers/inventory.js';
+import { importEndingBalanceWorkbook as runEndingBalanceImport } from '../services/inventoryImport.service.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import { requireUserId } from '../utils/authContext.js';
 import { createHttpError } from '../utils/httpError.js';
 import { isUuid } from '../utils/ids.js';
-import { optionalString, parseBoolean } from '../utils/request.js';
+import { optionalString, parseBoolean, requireObject, requireString } from '../utils/request.js';
 
 const INVENTORY_TRANSACTION_TYPES = new Set([
   'RECEIPT',
@@ -28,6 +30,9 @@ const INVENTORY_TRANSACTION_TYPES = new Set([
 ]);
 
 const SERIAL_STATUSES = new Set(['AVAILABLE', 'ALLOCATED', 'SHIPPED', 'CONSUMED', 'HOLD']);
+const LOCATION_TYPES = new Set(['RECEIVING', 'STORAGE', 'PICK_FACE', 'STAGING', 'PRODUCTION', 'SHIPPING', 'QUARANTINE']);
+const ITEM_TYPES = new Set(['FINISHED_GOOD', 'RAW_MATERIAL', 'SUB_ASSEMBLY']);
+const ITEM_CURRENCY_CODES = new Set(['USD', 'VND']);
 
 function parseLimit(value, defaultValue = 200, max = 1000) {
   if (value === undefined || value === null || value === '') {
@@ -136,5 +141,41 @@ export const listInventorySerialsHandler = asyncHandler(async (req, res) => {
   res.json({
     data: rows.map(serializeInventorySerial),
     count: rows.length
+  });
+});
+
+export const importEndingBalanceWorkbookHandler = asyncHandler(async (req, res) => {
+  requireObject(req.body);
+
+  const dryRun = parseBoolean(req.body.dryRun, false);
+  const locationType = optionalString(req.body.locationType)?.toUpperCase();
+  const defaultItemType = optionalString(req.body.defaultItemType)?.toUpperCase();
+  const unitCostCurrencyCode = optionalString(req.body.unitCostCurrencyCode)?.toUpperCase();
+
+  if (locationType && !LOCATION_TYPES.has(locationType)) {
+    throw createHttpError(400, 'locationType is invalid.');
+  }
+
+  if (defaultItemType && !ITEM_TYPES.has(defaultItemType)) {
+    throw createHttpError(400, 'defaultItemType is invalid.');
+  }
+
+  if (unitCostCurrencyCode && !ITEM_CURRENCY_CODES.has(unitCostCurrencyCode)) {
+    throw createHttpError(400, 'unitCostCurrencyCode must be USD or VND.');
+  }
+
+  const summary = await runEndingBalanceImport({
+    filePath: requireString(req.body.filePath, 'filePath'),
+    locationCode: optionalString(req.body.locationCode),
+    locationName: optionalString(req.body.locationName),
+    locationType,
+    defaultItemType,
+    unitCostCurrencyCode,
+    dryRun,
+    executedByUserId: dryRun ? req.user?.id ?? null : requireUserId(req)
+  });
+
+  res.json({
+    data: summary
   });
 });

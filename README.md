@@ -85,6 +85,39 @@ Run both in sequence with:
 npm run test:full
 ```
 
+## Ending Balance Import
+
+The demo package includes a backend importer for flat ending-balance workbooks like `BC ton kho samples.xlsx`.
+
+API entrypoint:
+
+- `POST /api/v1/inventory/import-ending-balances`
+
+Required body:
+
+```json
+{
+  "filePath": "D:\\apps\\IMS\\docs\\BC ton kho samples.xlsx"
+}
+```
+
+Useful optional fields:
+
+- `locationCode` defaults to `STOR-01`
+- `locationName` defaults to `Imported storage`
+- `locationType` defaults to `STORAGE`
+- `defaultItemType` defaults to `RAW_MATERIAL`
+- `unitCostCurrencyCode` defaults to `VND`
+- `dryRun` previews the import and rolls the transaction back
+
+CLI example:
+
+```powershell
+node .\scripts\import-ending-balances.js --file "D:\apps\IMS\docs\BC ton kho samples.xlsx" --dry-run
+```
+
+To apply the import, remove `--dry-run`. The script uses the seeded admin user ID by default for audit fields.
+
 ## Frontend
 
 A React operations workbench is included under `frontend/`.
@@ -93,6 +126,12 @@ Quick start from the project root:
 
 ```bat
 Start-IMS-App.bat
+```
+
+Stop the app from the project root:
+
+```bat
+Stop-IMS-App.bat
 ```
 
 The launcher now waits for `http://localhost:3000/health` before opening the frontend, which avoids the initial Vite proxy `ECONNREFUSED` burst when the API is still starting.

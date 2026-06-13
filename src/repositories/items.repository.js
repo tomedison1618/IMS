@@ -183,10 +183,56 @@ export async function createItem(item) {
 export async function updateItem(itemId, changes) {
   await ensureItemCurrencyColumn();
 
+  const existingItem = await findItemByIdOrSku(itemId);
+
+  if (!existingItem) {
+    return null;
+  }
+
+  if (changes.item_type && changes.item_type !== existingItem.item_type) {
+    if (changes.item_type === 'RAW_MATERIAL') {
+      const { rowCount: parentBomCount } = await pool.query(
+        `
+          SELECT 1
+          FROM boms
+          WHERE parent_item_id = $1::uuid
+          LIMIT 1
+        `,
+        [existingItem.item_id]
+      );
+
+      if (parentBomCount > 0) {
+        throw Object.assign(
+          new Error('Item cannot be changed to RAW_MATERIAL while it still has a BoM. Remove or reclassify its BoM first.'),
+          { statusCode: 409 }
+        );
+      }
+    }
+
+    if (changes.item_type === 'FINISHED_GOOD') {
+      const { rowCount: componentUsageCount } = await pool.query(
+        `
+          SELECT 1
+          FROM bom_lines
+          WHERE component_item_id = $1::uuid
+          LIMIT 1
+        `,
+        [existingItem.item_id]
+      );
+
+      if (componentUsageCount > 0) {
+        throw Object.assign(
+          new Error('Item cannot be changed to FINISHED_GOOD while it is used as a BoM component. Change those BoM lines first or use SUB_ASSEMBLY.'),
+          { statusCode: 409 }
+        );
+      }
+    }
+  }
+
   const fields = Object.entries(changes).filter(([, value]) => value !== undefined);
 
   if (fields.length === 0) {
-    return findItemByIdOrSku(itemId);
+    return existingItem;
   }
 
   const assignments = fields.map(([column], index) => `${column} = $${index + 2}`);
