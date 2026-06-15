@@ -109,6 +109,7 @@ const TEXT = {
     'nav.counts': 'Counts',
     'nav.manufacturing': 'Manufacturing',
     'nav.users': 'Users',
+    'nav.more': 'More',
     'users.directoryTitle': 'User Directory',
     'users.directoryDescription': 'Admin-only list of IMS users and their current roles.',
     'users.createTitle': 'Create User',
@@ -581,6 +582,7 @@ const TEXT = {
     'nav.counts': 'Kiểm kê',
     'nav.manufacturing': 'Sản xuất',
     'nav.users': 'Người dùng',
+    'nav.more': 'Khác',
     'users.directoryTitle': 'Danh sách người dùng',
     'users.directoryDescription': 'Danh sách người dùng IMS và vai trò hiện tại, chỉ dành cho quản trị.',
     'users.createTitle': 'Tạo người dùng',
@@ -1019,7 +1021,8 @@ const TEXT = {
   }
 };
 
-const NAV = ['overview', 'master', 'purchaseOrders', 'receiving', 'fulfillment', 'counts', 'manufacturing'];
+const NAV = ['master', 'purchaseOrders', 'receiving', 'fulfillment', 'counts', 'manufacturing'];
+const PRIMARY_TOP_NAV = ['master', 'receiving', 'manufacturing'];
 const ROLE_LABEL_KEYS = {
   ADMIN: 'role.admin',
   FINANCE: 'role.finance',
@@ -1485,7 +1488,7 @@ export default function App() {
   const [language, setLanguage] = useState(loadStoredLanguage);
   const t = useMemo(() => createTranslator(language), [language]);
   const [session, setSession] = useState(loadStoredSession);
-  const [section, setSection] = useState('overview');
+  const [section, setSection] = useState('master');
   const [masterTab, setMasterTab] = useState('inventory');
   const [isEditingSelectedItem, setIsEditingSelectedItem] = useState(false);
   const [itemDetailTab, setItemDetailTab] = useState('overview');
@@ -1537,9 +1540,11 @@ export default function App() {
     return data.users.find((user) => user.userId === selected.userId) ?? null;
   }, [data.users, selected.userId]);
   const availableRequestRoles = useMemo(() => {
-    return (data.me?.roles ?? []).map((role) => role.roleCode);
-  }, [data.me?.roles]);
+    return Object.keys(ROLE_LABEL_KEYS);
+  }, []);
   const navItems = useMemo(() => adminVisible ? [...NAV, 'users'] : NAV, [adminVisible]);
+  const primaryTopNavItems = useMemo(() => navItems.filter((item) => PRIMARY_TOP_NAV.includes(item)), [navItems]);
+  const secondaryTopNavItems = useMemo(() => navItems.filter((item) => !PRIMARY_TOP_NAV.includes(item)), [navItems]);
 
   useEffect(() => {
     window.localStorage.removeItem('ims-front-session');
@@ -2353,6 +2358,75 @@ export default function App() {
     }));
   }
 
+  function createBomSummary(bom) {
+    if (!bom) {
+      return null;
+    }
+
+    return {
+      bomId: bom.bomId,
+      parentItemId: bom.parentItemId,
+      parentInternalSku: bom.parentInternalSku,
+      parentItemName: bom.parentItemName,
+      versionName: bom.versionName,
+      isActive: bom.isActive,
+      notes: bom.notes,
+      createdBy: bom.createdBy,
+      approvedBy: bom.approvedBy,
+      createdAt: bom.createdAt,
+      updatedAt: bom.updatedAt,
+      lineCount: bom.lineCount ?? bom.lines?.length ?? 0
+    };
+  }
+
+  function upsertBomSummary(summary) {
+    if (!summary?.bomId) {
+      return;
+    }
+
+    setData((current) => {
+      const nextBoms = current.boms
+        .filter((bom) => bom.bomId !== summary.bomId)
+        .map((bom) => (
+          summary.isActive && bom.parentItemId === summary.parentItemId
+            ? { ...bom, isActive: false }
+            : bom
+        ));
+
+      nextBoms.push(summary);
+      nextBoms.sort((left, right) => {
+        const skuComparison = String(left.parentInternalSku ?? '').localeCompare(String(right.parentInternalSku ?? ''));
+        if (skuComparison !== 0) {
+          return skuComparison;
+        }
+
+        return String(right.versionName ?? '').localeCompare(String(left.versionName ?? ''));
+      });
+
+      return {
+        ...current,
+        boms: nextBoms
+      };
+    });
+  }
+
+  function syncBomState(updatedBom) {
+    const summary = createBomSummary(updatedBom);
+    if (!summary) {
+      return;
+    }
+
+    upsertBomSummary(summary);
+
+    if (inventoryDetail?.item?.itemId !== summary.parentItemId) {
+      return;
+    }
+
+    if (summary.isActive) {
+      setItemBomState({ status: 'ready', bom: updatedBom });
+    }
+  }
+
   async function generateBarcodeForSelectedItem() {
     if (!selected.itemId) {
       fail('error.selectItemFirst');
@@ -2432,12 +2506,16 @@ export default function App() {
       updatedItem.itemType !== previousItemType
     ) {
       const bomLookup = await api.request(`/boms?${buildQueryString({ parentItemId: updatedItem.itemId, limit: 1 })}`);
+      const existingBom = bomLookup.data?.[0] ?? null;
 
-      if ((bomLookup.count ?? bomLookup.data?.length ?? 0) === 0) {
-        pendingWorkspaceScrollRef.current = true;
-        setItemDetailTab('components');
-        setMessage(t('message.itemRequiresBomSetup', { sku: updatedItem.internalSku }));
-      }
+      pendingWorkspaceScrollRef.current = true;
+      setItemDetailTab('components');
+      setMessage(t('message.itemRequiresBomSetup', { sku: updatedItem.internalSku }));
+      await openBomWorkspaceForItem(updatedItem, {
+        createIfMissing: !existingBom,
+        bomId: existingBom?.bomId,
+        bomSummary: existingBom
+      });
     }
   }
 
@@ -2453,8 +2531,8 @@ export default function App() {
     }));
   }
 
-  function openBomWorkspaceForSelectedItem({ createIfMissing = false } = {}) {
-    if (!inventoryDetail?.item) {
+  async function openBomWorkspaceForItem(item, { createIfMissing = false, bomId, bomSummary } = {}) {
+    if (!item) {
       return;
     }
 
@@ -2462,24 +2540,47 @@ export default function App() {
     setManufacturingTab('bom');
     setBomWorkspaceMode(createIfMissing ? 'create' : 'browse');
     setBomExplosionPreview([]);
+    setBomDetail(null);
     resetBomLineEditor();
     setSelected((current) => ({
       ...current,
-      bomId: createIfMissing ? undefined : itemBomState.bom?.bomId,
+      bomId: createIfMissing ? undefined : bomId,
       bomLineId: undefined
     }));
     setForms((current) => ({
       ...current,
       bom: {
         ...current.bom,
-        parentItemId: inventoryDetail.item.itemId
+        parentItemId: item.itemId
       },
       productionOrder: {
         ...current.productionOrder,
-        finishedGoodItemId: inventoryDetail.item.itemId,
-        bomId: createIfMissing ? '' : itemBomState.bom?.bomId ?? current.productionOrder.bomId
+        finishedGoodItemId: item.itemId,
+        bomId: createIfMissing ? '' : bomId ?? current.productionOrder.bomId
       }
     }));
+
+    if (createIfMissing || !bomId) {
+      return;
+    }
+
+    if (bomSummary) {
+      upsertBomSummary(bomSummary);
+    }
+
+    try {
+      const detail = await refreshBomDetails(bomId);
+      syncBomState(detail);
+    } catch {
+      setBomDetail(null);
+    }
+  }
+
+  function openBomWorkspaceForSelectedItem({ createIfMissing = false } = {}) {
+    openBomWorkspaceForItem(inventoryDetail?.item, {
+      createIfMissing,
+      bomId: itemBomState.bom?.bomId
+    });
   }
 
   async function archiveSelectedItem() {
@@ -2807,6 +2908,7 @@ export default function App() {
         }
       })
     );
+    syncBomState(response.data);
     setSelected((current) => ({ ...current, bomId: response.data.bomId, bomLineId: undefined }));
     applyBomDetails(response.data);
     setBomWorkspaceMode('browse');
@@ -2834,6 +2936,7 @@ export default function App() {
         }
       })
     );
+    syncBomState(response.data);
     applyBomDetails(response.data);
     setForms((current) => ({
       ...current,
@@ -2848,6 +2951,7 @@ export default function App() {
 
   async function activateBom() {
     const response = await run('bomActivation', () => api.request(`/boms/${selected.bomId}/activate`, { method: 'POST' }));
+    syncBomState(response.data);
     applyBomDetails(response.data);
   }
 
@@ -2861,6 +2965,7 @@ export default function App() {
         }
       })
     );
+    syncBomState(response.data);
     applyBomDetails(response.data);
   }
 
@@ -2882,6 +2987,7 @@ export default function App() {
         }
       })
     );
+    syncBomState(response.data);
     applyBomDetails(response.data);
     const updatedLine = response.data.lines.find((line) => line.bomLineId === selected.bomLineId);
     loadBomLineEditor(updatedLine);
@@ -2901,6 +3007,7 @@ export default function App() {
         method: 'DELETE'
       })
     );
+    syncBomState(response.data);
     applyBomDetails(response.data);
     resetBomLineEditor();
   }
@@ -3223,68 +3330,104 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <aside className="sidebar">
-        <div className="brand">
-          <PostefLogo />
-          <span className="brand__eyebrow">{t('brand.eyebrow')}</span>
-          <h1>{t('brand.title')}</h1>
-          <p>{t('brand.description')}</p>
-        </div>
-
-        <nav className="nav">
-          {navItems.map((item) => (
-            <button key={item} type="button" className={section === item ? 'nav__button nav__button--active' : 'nav__button'} onClick={() => setSection(item)}>
-              {t(`nav.${item}`)}
-            </button>
-          ))}
-        </nav>
-
-        <div className="session-card">
-          <label className="field">
-            <span>{t('sidebar.requestRole')}</span>
-            <select value={session.role} onChange={(event) => setSession((current) => ({ ...current, role: event.target.value }))}>
-              {(availableRequestRoles.length ? availableRequestRoles : [session.role]).map((roleCode) => (
-                <option key={roleCode} value={roleCode}>
-                  {getRoleLabel(t, roleCode)}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="field">
-            <span>{t('sidebar.language')}</span>
-            <select value={language} onChange={(event) => setLanguage(event.target.value)}>
-              <option value="en">{t('language.en')}</option>
-              <option value="vi">{t('language.vi')}</option>
-            </select>
-          </label>
-
-          <div className="session-card__meta">
-            <span>{data.me ? `${data.me.firstName} ${data.me.lastName}` : t('sidebar.user')}</span>
-            <small>{data.me?.email ?? session.userId}</small>
+      <div className="topbar">
+        <div className="topbar__left">
+          <div
+            className="topbar__brand"
+            role="button"
+            tabIndex={0}
+            onClick={() => setSection('overview')}
+            onKeyDown={(e) => e.key === 'Enter' && setSection('overview')}
+            style={{ cursor: 'pointer', outline: 'none' }}
+          >
+            <PostefLogo />
+            <div className="topbar__brand-copy">
+              <strong>{t('brand.title')}</strong>
+            </div>
           </div>
 
-          <div className="session-card__chips">
-            {(data.me?.roles ?? []).map((role) => (
-              <span key={role.roleId ?? role.roleCode} className="chip">
-                {getRoleLabel(t, role.roleCode)}
-              </span>
+          <div className="topbar__nav">
+            {primaryTopNavItems.map((item) => (
+              <button
+                key={item}
+                type="button"
+                className={section === item ? 'button topbar__nav-button' : 'button button--ghost topbar__nav-button'}
+                onClick={() => setSection(item)}
+              >
+                {t(`nav.${item}`)}
+              </button>
             ))}
+
+            {secondaryTopNavItems.length ? (
+              <div className="nav-dropdown">
+                <button type="button" className={secondaryTopNavItems.includes(section) ? 'button topbar__nav-button' : 'button button--ghost topbar__nav-button'}>
+                  {t('nav.more')} ▾
+                </button>
+                <div className="nav-dropdown__menu">
+                  {secondaryTopNavItems.map((item) => (
+                    <button
+                      key={item}
+                      type="button"
+                      className={section === item ? 'nav-dropdown__item nav-dropdown__item--active' : 'nav-dropdown__item'}
+                      onClick={() => setSection(item)}
+                    >
+                      {t(`nav.${item}`)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="topbar__right">
+          <div className="topbar__settings">
+            <label className="field topbar__field topbar__field--compact">
+              <select value={session.role} onChange={(event) => setSession((current) => ({ ...current, role: event.target.value }))}>
+                {(availableRequestRoles.length ? availableRequestRoles : [session.role]).map((roleCode) => (
+                  <option key={roleCode} value={roleCode}>
+                    {getRoleLabel(t, roleCode)}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="field topbar__field topbar__field--compact">
+              <select value={language} onChange={(event) => setLanguage(event.target.value)}>
+                <option value="en">{t('language.en')}</option>
+                <option value="vi">{t('language.vi')}</option>
+              </select>
+            </label>
           </div>
 
-          <button type="button" className="button button--ghost button--block" onClick={() => setSession((current) => current ? { ...current } : current)}>
-            {t('sidebar.refresh')}
-          </button>
-          <button type="button" className="button button--ghost button--block" onClick={logout}>
-            {t('sidebar.logout')}
-          </button>
+          <div className="topbar__session">
+            <div className="session-card__meta">
+              <span>{data.me ? `${data.me.firstName} ${data.me.lastName}` : t('sidebar.user')}</span>
+              <small>{data.me?.email ?? session.userId}</small>
+            </div>
+            <div className="session-card__chips">
+              {(data.me?.roles ?? []).map((role) => (
+                <span key={role.roleId ?? role.roleCode} className="chip">
+                  {getRoleLabel(t, role.roleCode)}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div className="topbar__actions">
+            <button type="button" className="button button--ghost" onClick={() => setSession((current) => current ? { ...current } : current)}>
+              {t('sidebar.refresh')}
+            </button>
+            <button type="button" className="button button--ghost" onClick={logout}>
+              {t('sidebar.logout')}
+            </button>
+          </div>
         </div>
-      </aside>
+      </div>
 
       <main className="content">
         <header className={section === 'manufacturing' ? 'hero hero--compact' : 'hero'}>
           <div className={section === 'manufacturing' ? 'hero__body hero__body--compact' : 'hero__body'}>
-            <span className="hero__eyebrow">{t('hero.eyebrow')}</span>
             <h2>{heroTitle}</h2>
             {section === 'manufacturing' ? (
               <p className={heroDescription ? 'hero__description' : 'hero__description hero__description--placeholder'}>
@@ -3382,7 +3525,6 @@ export default function App() {
                 <div className="panel__header">
                   <div>
                     <h2>{masterTab === 'inventory' ? t('master.activeItems') : t('master.archivedItems')}</h2>
-                    <p>{masterTab === 'inventory' ? t('master.archiveWarning') : t('master.archivedWarning')}</p>
                   </div>
                   <input className="search" placeholder={t('common.searchSkuName')} value={itemSearch} onChange={(event) => setItemSearch(event.target.value)} />
                 </div>
@@ -3410,160 +3552,30 @@ export default function App() {
                       ]}
                     />
                   </div>
-                  {inventoryDetail ? (
-                    <div ref={inventoryDetailRef} className="detail-card stack inventory-shell__detail">
-                      <div className="button-row">
-                        <button type="button" className="button button--secondary" onClick={() => refreshInventory(selected.itemId)}>{t('master.refreshInventory')}</button>
-                        <button type="button" className="button button--ghost" onClick={generateBarcodeForSelectedItem}>{t('master.generateBarcode')}</button>
-                        {canMaintainItems ? (
-                          <button type="button" className={isEditingSelectedItem ? 'button button--secondary' : 'button button--ghost'} onClick={openItemEditTab}>{t('master.editItem')}</button>
-                        ) : null}
-                        {inventoryDetail.item.isActive ? (
-                          <button type="button" className="button button--ghost" onClick={archiveSelectedItem}>{t('master.archiveItem')}</button>
-                        ) : (
-                          <button type="button" className="button button--ghost" onClick={restoreSelectedItem}>{t('master.restoreItem')}</button>
-                        )}
-                        {!inventoryDetail.item.isActive && adminVisible ? (
-                          <button type="button" className="button button--ghost" onClick={deleteSelectedArchivedItem}>{t('master.deleteArchivedItem')}</button>
-                        ) : null}
-                      </div>
-                      <p className="inline-note"><strong>{inventoryDetail.item.internalSku}</strong> - {inventoryDetail.item.name}</p>
-                      <div className="inventory-summary">
-                        <div className="metric"><span>{t('common.onHand')}</span><strong>{formatNumber(inventoryDetail.totals.quantityOnHand)}</strong></div>
-                        <div className="metric"><span>{t('common.reserved')}</span><strong>{formatNumber(inventoryDetail.totals.quantityReserved)}</strong></div>
-                        <div className="metric metric--accent"><span>{t('common.available')}</span><strong>{formatNumber(inventoryDetail.totals.quantityAvailable)}</strong></div>
-                      </div>
-                      <div className="bom-stat-grid">
-                        <div className="detail-card bom-stat">
-                          <span>{t('master.itemType')}</span>
-                          <strong>{t(`itemType.${inventoryDetail.item.itemType}`)}</strong>
-                          <small>{t('master.uom')}: {inventoryDetail.item.uom}</small>
-                        </div>
-                        <div className="detail-card bom-stat">
-                          <span>{t('master.supplierSku')}</span>
-                          <strong>{inventoryDetail.item.supplierSku || t('common.notSet')}</strong>
-                          <small>{t('master.unitCost')}: {inventoryDetail.item.unitCost === undefined ? t('common.restricted') : formatAppMoney(inventoryDetail.item.unitCost, inventoryDetail.item.unitCostCurrencyCode)}</small>
-                        </div>
-                        <div className="detail-card bom-stat">
-                          <span>{t('master.activeBomVersion')}</span>
-                          <strong>{itemBomState.status === 'ready' ? itemBomState.bom.versionName : t('common.notSet')}</strong>
-                          <small>{itemBomState.status === 'ready' ? `${t('master.componentCount')}: ${formatNumber(itemBomState.bom.lineCount ?? itemBomState.bom.lines?.length ?? 0)}` : t('master.componentsDescription')}</small>
-                        </div>
-                      </div>
-                      {isEditingSelectedItem && canMaintainItems ? (
-                        <div className="subpanel">
-                          <div className="panel__header">
-                            <div>
-                              <h2>{t('master.itemSettingsTitle')}</h2>
-                              <p>{t('master.itemSettingsDescription')}</p>
-                            </div>
-                          </div>
-                          <div className="form-grid">
-                            <label className="field"><span>{t('master.internalSku')}</span><input value={forms.itemEdit.internalSku} onChange={(event) => updateForm('itemEdit', 'internalSku', event.target.value)} /></label>
-                            <label className="field"><span>{t('common.name')}</span><input value={forms.itemEdit.name} onChange={(event) => updateForm('itemEdit', 'name', event.target.value)} /></label>
-                            <label className="field">
-                              <span>{t('master.itemType')}</span>
-                              <select value={forms.itemEdit.itemType} onChange={(event) => updateForm('itemEdit', 'itemType', event.target.value)}>
-                                <option value="RAW_MATERIAL">{t('itemType.RAW_MATERIAL')}</option>
-                                <option value="SUB_ASSEMBLY">{t('itemType.SUB_ASSEMBLY')}</option>
-                                <option value="FINISHED_GOOD">{t('itemType.FINISHED_GOOD')}</option>
-                              </select>
-                            </label>
-                            <label className="field"><span>{t('master.uom')}</span><input value={forms.itemEdit.uom} onChange={(event) => updateForm('itemEdit', 'uom', event.target.value)} /></label>
-                            <label className="field"><span>{t('master.supplierSku')}</span><input value={forms.itemEdit.supplierSku} onChange={(event) => updateForm('itemEdit', 'supplierSku', event.target.value)} /></label>
-                            <label className="field">
-                              <span>{t('master.unitCost')}</span>
-                              <input
-                                value={financeVisible ? forms.itemEdit.unitCost : t('common.restricted')}
-                                disabled={!financeVisible}
-                                placeholder={t('master.unitCostPlaceholder')}
-                                title={t('master.unitCostHint')}
-                                onChange={(event) => updateForm('itemEdit', 'unitCost', event.target.value)}
-                              />
-                            </label>
-                            <label className="field"><span>{t('master.minStock')}</span><input value={forms.itemEdit.minStockLevel} onChange={(event) => updateForm('itemEdit', 'minStockLevel', event.target.value)} /></label>
-                            <label className="field"><span>{t('master.reorderQty')}</span><input value={forms.itemEdit.reorderQuantity} onChange={(event) => updateForm('itemEdit', 'reorderQuantity', event.target.value)} /></label>
-                            <label className="field"><span>{t('master.leadTime')}</span><input value={forms.itemEdit.leadTimeDays} onChange={(event) => updateForm('itemEdit', 'leadTimeDays', event.target.value)} /></label>
-                            <label className="field">
-                              <span>{t('master.lotTracking')}</span>
-                              <select value={forms.itemEdit.requiresLotTracking} onChange={(event) => updateForm('itemEdit', 'requiresLotTracking', event.target.value)}>
-                                <option value="false">{t('master.trackingNotRequired')}</option>
-                                <option value="true">{t('master.trackingRequired')}</option>
-                              </select>
-                            </label>
-                            <label className="field">
-                              <span>{t('master.serialTracking')}</span>
-                              <select value={forms.itemEdit.requiresSerialTracking} onChange={(event) => updateForm('itemEdit', 'requiresSerialTracking', event.target.value)}>
-                                <option value="false">{t('master.trackingNotRequired')}</option>
-                                <option value="true">{t('master.trackingRequired')}</option>
-                              </select>
-                            </label>
-                            <label className="field field--full"><span>{t('master.descriptionLabel')}</span><input value={forms.itemEdit.description} onChange={(event) => updateForm('itemEdit', 'description', event.target.value)} /></label>
-                          </div>
+                  <div className="inventory-shell__aside">
+                    {inventoryDetail ? (
+                      <>
+                        <div ref={inventoryDetailRef} className="detail-card stack inventory-shell__detail">
                           <div className="button-row">
-                            <button type="button" className="button" onClick={saveSelectedItem} disabled={!forms.itemEdit.internalSku || !forms.itemEdit.name || !forms.itemEdit.uom}>{t('master.saveItem')}</button>
-                            <button type="button" className="button button--ghost" onClick={cancelItemEdit}>{t('master.cancelEdit')}</button>
+                            <button type="button" className="button button--secondary" onClick={() => refreshInventory(selected.itemId)}>{t('master.refreshInventory')}</button>
+                            <button type="button" className="button button--ghost" onClick={generateBarcodeForSelectedItem}>{t('master.generateBarcode')}</button>
+                            {canMaintainItems ? (
+                              <button type="button" className={isEditingSelectedItem ? 'button button--secondary' : 'button button--ghost'} onClick={openItemEditTab}>{t('master.editItem')}</button>
+                            ) : null}
+                            {inventoryDetail.item.isActive ? (
+                              <button type="button" className="button button--ghost" onClick={archiveSelectedItem}>{t('master.archiveItem')}</button>
+                            ) : (
+                              <button type="button" className="button button--ghost" onClick={restoreSelectedItem}>{t('master.restoreItem')}</button>
+                            )}
+                            {!inventoryDetail.item.isActive && adminVisible ? (
+                              <button type="button" className="button button--ghost" onClick={deleteSelectedArchivedItem}>{t('master.deleteArchivedItem')}</button>
+                            ) : null}
                           </div>
-                        </div>
-                      ) : null}
-                    </div>
-                  ) : (
-                    <div className="detail-card inventory-shell__placeholder">
-                      <h3>{t('master.selectItemTitle')}</h3>
-                      <p>{t('master.selectItemDescription')}</p>
-                    </div>
-                  )}
-                </div>
-                {inventoryDetail ? (
-                  <div ref={inventoryWorkspaceRef} className="subpanel stack inventory-workspace">
-                    <div className="toggle-row">
-                      <button
-                        type="button"
-                        className={itemDetailTab === 'overview' ? 'button' : 'button button--ghost'}
-                        onClick={() => setItemDetailTab('overview')}
-                      >
-                        {t('master.overviewTab')}
-                      </button>
-                      {['FINISHED_GOOD', 'SUB_ASSEMBLY'].includes(inventoryDetail.item.itemType) ? (
-                        <button
-                          type="button"
-                          className={itemDetailTab === 'components' ? 'button' : 'button button--ghost'}
-                          onClick={() => setItemDetailTab('components')}
-                        >
-                          {t('master.componentsTab')}
-                        </button>
-                      ) : null}
-                      <button
-                        type="button"
-                        className={itemDetailTab === 'transactions' ? 'button' : 'button button--ghost'}
-                        onClick={() => setItemDetailTab('transactions')}
-                      >
-                        {t('master.transactionsTab')}
-                      </button>
-                      <button
-                        type="button"
-                        className={itemDetailTab === 'lots' ? 'button' : 'button button--ghost'}
-                        onClick={() => setItemDetailTab('lots')}
-                      >
-                        {t('master.lotsTab')}
-                      </button>
-                      <button
-                        type="button"
-                        className={itemDetailTab === 'serials' ? 'button' : 'button button--ghost'}
-                        onClick={() => setItemDetailTab('serials')}
-                      >
-                        {t('master.serialsTab')}
-                      </button>
-                    </div>
-
-                    {itemDetailTab === 'overview' ? (
-                      <div className="stack">
-                        <div className="subpanel">
-                          <div className="panel__header">
-                            <div>
-                              <h2>{t('master.itemSettingsTitle')}</h2>
-                              <p>{t('master.itemSettingsDescription')}</p>
-                            </div>
+                          <p className="inline-note"><strong>{inventoryDetail.item.internalSku}</strong> - {inventoryDetail.item.name}</p>
+                          <div className="inventory-summary">
+                            <div className="metric"><span>{t('common.onHand')}</span><strong>{formatNumber(inventoryDetail.totals.quantityOnHand)}</strong></div>
+                            <div className="metric"><span>{t('common.reserved')}</span><strong>{formatNumber(inventoryDetail.totals.quantityReserved)}</strong></div>
+                            <div className="metric metric--accent"><span>{t('common.available')}</span><strong>{formatNumber(inventoryDetail.totals.quantityAvailable)}</strong></div>
                           </div>
                           <div className="bom-stat-grid">
                             <div className="detail-card bom-stat">
@@ -3577,201 +3589,326 @@ export default function App() {
                               <small>{t('master.unitCost')}: {inventoryDetail.item.unitCost === undefined ? t('common.restricted') : formatAppMoney(inventoryDetail.item.unitCost, inventoryDetail.item.unitCostCurrencyCode)}</small>
                             </div>
                             <div className="detail-card bom-stat">
-                              <span>{t('common.quantity')}</span>
-                              <strong>{formatNumber(inventoryDetail.item.minStockLevel)} / {formatNumber(inventoryDetail.item.reorderQuantity)}</strong>
-                              <small>{t('master.minStock')} / {t('master.reorderQty')}</small>
-                            </div>
-                            <div className="detail-card bom-stat">
-                              <span>{t('master.leadTime')}</span>
-                              <strong>{formatNumber(inventoryDetail.item.leadTimeDays)}</strong>
-                              <small>{t('common.date')}: {formatAppDate(inventoryDetail.item.updatedAt ?? inventoryDetail.item.createdAt)}</small>
-                            </div>
-                            <div className="detail-card bom-stat">
-                              <span>{t('master.lotTracking')}</span>
-                              <strong>{inventoryDetail.item.requiresLotTracking ? t('common.yes') : t('common.no')}</strong>
-                              <small>{t('master.serialTracking')}: {inventoryDetail.item.requiresSerialTracking ? t('common.yes') : t('common.no')}</small>
-                            </div>
-                            <div className="detail-card bom-stat">
-                              <span>{t('master.descriptionLabel')}</span>
-                              <strong>{inventoryDetail.item.description || t('common.notSet')}</strong>
-                              <small>{t('common.status')}: {inventoryDetail.item.isActive ? t('common.active') : t('common.inactive')}</small>
+                              <span>{t('master.activeBomVersion')}</span>
+                              <strong>{itemBomState.status === 'ready' ? itemBomState.bom.versionName : t('common.notSet')}</strong>
+                              <small>{itemBomState.status === 'ready' ? `${t('master.componentCount')}: ${formatNumber(itemBomState.bom.lineCount ?? itemBomState.bom.lines?.length ?? 0)}` : t('master.componentsDescription')}</small>
                             </div>
                           </div>
-                        </div>
-                        <div className="subpanel">
-                          <div className="panel__header">
-                            <div>
-                              <h2>{t('master.balanceBreakdownTitle')}</h2>
-                              <p>{t('master.balanceBreakdownDescription')}</p>
+                          {isEditingSelectedItem && canMaintainItems ? (
+                            <div className="subpanel">
+                              <div className="panel__header">
+                                <div>
+                                  <h2>{t('master.itemSettingsTitle')}</h2>
+                                </div>
+                              </div>
+                              <div className="form-grid">
+                                <label className="field"><span>{t('master.internalSku')}</span><input value={forms.itemEdit.internalSku} onChange={(event) => updateForm('itemEdit', 'internalSku', event.target.value)} /></label>
+                                <label className="field"><span>{t('common.name')}</span><input value={forms.itemEdit.name} onChange={(event) => updateForm('itemEdit', 'name', event.target.value)} /></label>
+                                <label className="field">
+                                  <span>{t('master.itemType')}</span>
+                                  <select value={forms.itemEdit.itemType} onChange={(event) => updateForm('itemEdit', 'itemType', event.target.value)}>
+                                    <option value="RAW_MATERIAL">{t('itemType.RAW_MATERIAL')}</option>
+                                    <option value="SUB_ASSEMBLY">{t('itemType.SUB_ASSEMBLY')}</option>
+                                    <option value="FINISHED_GOOD">{t('itemType.FINISHED_GOOD')}</option>
+                                  </select>
+                                </label>
+                                <label className="field"><span>{t('master.uom')}</span><input value={forms.itemEdit.uom} onChange={(event) => updateForm('itemEdit', 'uom', event.target.value)} /></label>
+                                <label className="field"><span>{t('master.supplierSku')}</span><input value={forms.itemEdit.supplierSku} onChange={(event) => updateForm('itemEdit', 'supplierSku', event.target.value)} /></label>
+                                <label className="field">
+                                  <span>{t('master.unitCost')}</span>
+                                  <input
+                                    value={financeVisible ? forms.itemEdit.unitCost : t('common.restricted')}
+                                    disabled={!financeVisible}
+                                    placeholder={t('master.unitCostPlaceholder')}
+                                    title={t('master.unitCostHint')}
+                                    onChange={(event) => updateForm('itemEdit', 'unitCost', event.target.value)}
+                                  />
+                                </label>
+                                <label className="field"><span>{t('master.minStock')}</span><input value={forms.itemEdit.minStockLevel} onChange={(event) => updateForm('itemEdit', 'minStockLevel', event.target.value)} /></label>
+                                <label className="field"><span>{t('master.reorderQty')}</span><input value={forms.itemEdit.reorderQuantity} onChange={(event) => updateForm('itemEdit', 'reorderQuantity', event.target.value)} /></label>
+                                <label className="field"><span>{t('master.leadTime')}</span><input value={forms.itemEdit.leadTimeDays} onChange={(event) => updateForm('itemEdit', 'leadTimeDays', event.target.value)} /></label>
+                                <label className="field">
+                                  <span>{t('master.lotTracking')}</span>
+                                  <select value={forms.itemEdit.requiresLotTracking} onChange={(event) => updateForm('itemEdit', 'requiresLotTracking', event.target.value)}>
+                                    <option value="false">{t('master.trackingNotRequired')}</option>
+                                    <option value="true">{t('master.trackingRequired')}</option>
+                                  </select>
+                                </label>
+                                <label className="field">
+                                  <span>{t('master.serialTracking')}</span>
+                                  <select value={forms.itemEdit.requiresSerialTracking} onChange={(event) => updateForm('itemEdit', 'requiresSerialTracking', event.target.value)}>
+                                    <option value="false">{t('master.trackingNotRequired')}</option>
+                                    <option value="true">{t('master.trackingRequired')}</option>
+                                  </select>
+                                </label>
+                                <label className="field field--full"><span>{t('master.descriptionLabel')}</span><input value={forms.itemEdit.description} onChange={(event) => updateForm('itemEdit', 'description', event.target.value)} /></label>
+                              </div>
+                              <div className="button-row">
+                                <button type="button" className="button" onClick={saveSelectedItem} disabled={!forms.itemEdit.internalSku || !forms.itemEdit.name || !forms.itemEdit.uom}>{t('master.saveItem')}</button>
+                                <button type="button" className="button button--ghost" onClick={cancelItemEdit}>{t('master.cancelEdit')}</button>
+                              </div>
                             </div>
-                          </div>
-                          <Table
-                            rowKey="inventoryBalanceId"
-                            rows={inventoryDetail.balances}
-                            emptyMessage={t('common.noRecords')}
-                            columns={[
-                              { key: 'locationCode', label: t('overview.locationCode') },
-                              { key: 'lotNumber', label: t('common.lot'), render: (row) => row.lotNumber || t('common.notSet') },
-                              { key: 'serialNumber', label: t('common.serial'), render: (row) => row.serialNumber || t('common.notSet') },
-                              { key: 'quantityOnHand', label: t('common.onHand'), render: (row) => formatNumber(row.quantityOnHand) },
-                              { key: 'quantityReserved', label: t('common.reserved'), render: (row) => formatNumber(row.quantityReserved) },
-                              { key: 'quantityAvailable', label: t('common.available'), render: (row) => formatNumber(row.quantityAvailable) }
-                            ]}
-                          />
-                        </div>
-                      </div>
-                    ) : null}
-
-                    {itemDetailTab === 'components' && ['FINISHED_GOOD', 'SUB_ASSEMBLY'].includes(inventoryDetail.item.itemType) ? (
-                      <div className="subpanel">
-                        <div className="panel__header">
-                          <div>
-                            <h2>{t('master.componentsTitle')}</h2>
-                            <p>{t('master.componentsDescription')}</p>
-                          </div>
-                          {canMaintainItems ? (
-                            <button
-                              type="button"
-                              className="button button--ghost"
-                              disabled={itemBomState.status === 'loading'}
-                              onClick={() => openBomWorkspaceForSelectedItem({ createIfMissing: itemBomState.status !== 'ready' })}
-                            >
-                              {itemBomState.status === 'ready' ? t('master.openBomWorkspace') : t('master.createBomWorkspace')}
-                            </button>
                           ) : null}
                         </div>
-                        {itemBomState.status === 'loading' ? (
-                          <div className="detail-card">
-                            <p className="inline-note">{t('master.loadingBom')}</p>
+
+                        <div ref={inventoryWorkspaceRef} className="subpanel stack inventory-workspace">
+                          <div className="toggle-row">
+                            <button
+                              type="button"
+                              className={itemDetailTab === 'overview' ? 'button' : 'button button--ghost'}
+                              onClick={() => setItemDetailTab('overview')}
+                            >
+                              {t('master.overviewTab')}
+                            </button>
+                            {['FINISHED_GOOD', 'SUB_ASSEMBLY'].includes(inventoryDetail.item.itemType) ? (
+                              <button
+                                type="button"
+                                className={itemDetailTab === 'components' ? 'button' : 'button button--ghost'}
+                                onClick={() => setItemDetailTab('components')}
+                              >
+                                {t('master.componentsTab')}
+                              </button>
+                            ) : null}
+                            <button
+                              type="button"
+                              className={itemDetailTab === 'transactions' ? 'button' : 'button button--ghost'}
+                              onClick={() => setItemDetailTab('transactions')}
+                            >
+                              {t('master.transactionsTab')}
+                            </button>
+                            <button
+                              type="button"
+                              className={itemDetailTab === 'lots' ? 'button' : 'button button--ghost'}
+                              onClick={() => setItemDetailTab('lots')}
+                            >
+                              {t('master.lotsTab')}
+                            </button>
+                            <button
+                              type="button"
+                              className={itemDetailTab === 'serials' ? 'button' : 'button button--ghost'}
+                              onClick={() => setItemDetailTab('serials')}
+                            >
+                              {t('master.serialsTab')}
+                            </button>
                           </div>
-                        ) : null}
-                        {itemBomState.status === 'restricted' ? (
-                          <div className="detail-card">
-                            <h3>{t('master.componentsTitle')}</h3>
-                            <p>{t('master.restrictedBomDescription')}</p>
-                          </div>
-                        ) : null}
-                        {itemBomState.status === 'empty' ? (
-                          <div className="detail-card">
-                            <h3>{t('master.noActiveBomTitle')}</h3>
-                            <p>{t('master.noActiveBomDescription')}</p>
-                          </div>
-                        ) : null}
-                        {itemBomState.status === 'ready' ? (
-                          <div className="stack">
-                            <div className="bom-stat-grid">
-                              <div className="detail-card bom-stat">
-                                <span>{t('master.activeBomVersion')}</span>
-                                <strong>{itemBomState.bom.versionName}</strong>
-                                <small>{t('common.status')}: {itemBomState.bom.isActive ? t('common.active') : t('common.inactive')}</small>
+
+                          {itemDetailTab === 'overview' ? (
+                            <div className="stack">
+                              <div className="subpanel">
+                                <div className="panel__header">
+                                  <div>
+                                    <h2>{t('master.itemSettingsTitle')}</h2>
+                                  </div>
+                                </div>
+                                <div className="bom-stat-grid">
+                                  <div className="detail-card bom-stat">
+                                    <span>{t('master.itemType')}</span>
+                                    <strong>{t(`itemType.${inventoryDetail.item.itemType}`)}</strong>
+                                    <small>{t('master.uom')}: {inventoryDetail.item.uom}</small>
+                                  </div>
+                                  <div className="detail-card bom-stat">
+                                    <span>{t('master.supplierSku')}</span>
+                                    <strong>{inventoryDetail.item.supplierSku || t('common.notSet')}</strong>
+                                    <small>{t('master.unitCost')}: {inventoryDetail.item.unitCost === undefined ? t('common.restricted') : formatAppMoney(inventoryDetail.item.unitCost, inventoryDetail.item.unitCostCurrencyCode)}</small>
+                                  </div>
+                                  <div className="detail-card bom-stat">
+                                    <span>{t('common.quantity')}</span>
+                                    <strong>{formatNumber(inventoryDetail.item.minStockLevel)} / {formatNumber(inventoryDetail.item.reorderQuantity)}</strong>
+                                    <small>{t('master.minStock')} / {t('master.reorderQty')}</small>
+                                  </div>
+                                  <div className="detail-card bom-stat">
+                                    <span>{t('master.leadTime')}</span>
+                                    <strong>{formatNumber(inventoryDetail.item.leadTimeDays)}</strong>
+                                    <small>{t('common.date')}: {formatAppDate(inventoryDetail.item.updatedAt ?? inventoryDetail.item.createdAt)}</small>
+                                  </div>
+                                  <div className="detail-card bom-stat">
+                                    <span>{t('master.lotTracking')}</span>
+                                    <strong>{inventoryDetail.item.requiresLotTracking ? t('common.yes') : t('common.no')}</strong>
+                                    <small>{t('master.serialTracking')}: {inventoryDetail.item.requiresSerialTracking ? t('common.yes') : t('common.no')}</small>
+                                  </div>
+                                  <div className="detail-card bom-stat">
+                                    <span>{t('master.descriptionLabel')}</span>
+                                    <strong>{inventoryDetail.item.description || t('common.notSet')}</strong>
+                                    <small>{t('common.status')}: {inventoryDetail.item.isActive ? t('common.active') : t('common.inactive')}</small>
+                                  </div>
+                                </div>
                               </div>
-                              <div className="detail-card bom-stat">
-                                <span>{t('master.componentCount')}</span>
-                                <strong>{formatNumber(itemBomState.bom.lineCount ?? itemBomState.bom.lines?.length ?? 0)}</strong>
-                                <small>{t('manufacturing.bomLinesTitle')}</small>
-                              </div>
-                              <div className="detail-card bom-stat">
-                                <span>{t('common.updated')}</span>
-                                <strong>{formatAppDate(itemBomState.bom.updatedAt ?? itemBomState.bom.createdAt)}</strong>
-                                <small>{t('common.version')}: {itemBomState.bom.versionName}</small>
+                              <div className="subpanel">
+                                <div className="panel__header">
+                                  <div>
+                                    <h2>{t('master.balanceBreakdownTitle')}</h2>
+                                  </div>
+                                </div>
+                                <Table
+                                  rowKey="inventoryBalanceId"
+                                  rows={inventoryDetail.balances}
+                                  emptyMessage={t('common.noRecords')}
+                                  columns={[
+                                    { key: 'locationCode', label: t('overview.locationCode') },
+                                    { key: 'lotNumber', label: t('common.lot'), render: (row) => row.lotNumber || t('common.notSet') },
+                                    { key: 'serialNumber', label: t('common.serial'), render: (row) => row.serialNumber || t('common.notSet') },
+                                    { key: 'quantityOnHand', label: t('common.onHand'), render: (row) => formatNumber(row.quantityOnHand) },
+                                    { key: 'quantityReserved', label: t('common.reserved'), render: (row) => formatNumber(row.quantityReserved) },
+                                    { key: 'quantityAvailable', label: t('common.available'), render: (row) => formatNumber(row.quantityAvailable) }
+                                  ]}
+                                />
                               </div>
                             </div>
-                            <Table
-                              rowKey="bomLineId"
-                              rows={itemBomState.bom.lines ?? []}
-                              emptyMessage={t('common.noRecords')}
-                              columns={[
-                                { key: 'lineNumber', label: t('manufacturing.lineNumber') },
-                                { key: 'componentInternalSku', label: t('common.sku') },
-                                { key: 'componentItemName', label: t('common.name') },
-                                { key: 'quantity', label: t('common.quantity'), render: (row) => formatNumber(row.quantity) },
-                                { key: 'scrapAllowancePct', label: t('manufacturing.scrapAllowancePct'), render: (row) => formatNumber(row.scrapAllowancePct) }
-                              ]}
-                            />
-                          </div>
-                        ) : null}
-                      </div>
-                    ) : null}
+                          ) : null}
 
-                    {itemDetailTab === 'transactions' ? (
-                      <div className="subpanel">
-                        <div className="panel__header">
-                          <div>
-                            <h2>{t('master.transactionHistoryTitle')}</h2>
-                            <p>{t('master.transactionHistoryDescription')}</p>
-                          </div>
+                          {itemDetailTab === 'components' && ['FINISHED_GOOD', 'SUB_ASSEMBLY'].includes(inventoryDetail.item.itemType) ? (
+                            <div className="subpanel">
+                              <div className="panel__header">
+                                <div>
+                                  <h2>{t('master.componentsTitle')}</h2>
+                                </div>
+                                {canMaintainItems ? (
+                                  <button
+                                    type="button"
+                                    className="button button--ghost"
+                                    disabled={itemBomState.status === 'loading'}
+                                    onClick={() => openBomWorkspaceForSelectedItem({ createIfMissing: itemBomState.status !== 'ready' })}
+                                  >
+                                    {itemBomState.status === 'ready' ? t('master.openBomWorkspace') : t('master.createBomWorkspace')}
+                                  </button>
+                                ) : null}
+                              </div>
+                              {itemBomState.status === 'loading' ? (
+                                <div className="detail-card">
+                                  <p className="inline-note">{t('master.loadingBom')}</p>
+                                </div>
+                              ) : null}
+                              {itemBomState.status === 'restricted' ? (
+                                <div className="detail-card">
+                                  <h3>{t('master.componentsTitle')}</h3>
+                                  <p>{t('master.restrictedBomDescription')}</p>
+                                </div>
+                              ) : null}
+                              {itemBomState.status === 'empty' ? (
+                                <div className="detail-card">
+                                  <h3>{t('master.noActiveBomTitle')}</h3>
+                                  <p>{t('master.noActiveBomDescription')}</p>
+                                </div>
+                              ) : null}
+                              {itemBomState.status === 'ready' ? (
+                                <div className="stack">
+                                  <div className="bom-stat-grid">
+                                    <div className="detail-card bom-stat">
+                                      <span>{t('master.activeBomVersion')}</span>
+                                      <strong>{itemBomState.bom.versionName}</strong>
+                                      <small>{t('common.status')}: {itemBomState.bom.isActive ? t('common.active') : t('common.inactive')}</small>
+                                    </div>
+                                    <div className="detail-card bom-stat">
+                                      <span>{t('master.componentCount')}</span>
+                                      <strong>{formatNumber(itemBomState.bom.lineCount ?? itemBomState.bom.lines?.length ?? 0)}</strong>
+                                      <small>{t('manufacturing.bomLinesTitle')}</small>
+                                    </div>
+                                    <div className="detail-card bom-stat">
+                                      <span>{t('common.updated')}</span>
+                                      <strong>{formatAppDate(itemBomState.bom.updatedAt ?? itemBomState.bom.createdAt)}</strong>
+                                      <small>{t('common.version')}: {itemBomState.bom.versionName}</small>
+                                    </div>
+                                  </div>
+                                  <Table
+                                    rowKey="bomLineId"
+                                    rows={itemBomState.bom.lines ?? []}
+                                    emptyMessage={t('common.noRecords')}
+                                    columns={[
+                                      { key: 'lineNumber', label: t('manufacturing.lineNumber') },
+                                      { key: 'componentInternalSku', label: t('common.sku') },
+                                      { key: 'componentItemName', label: t('common.name') },
+                                      { key: 'quantity', label: t('common.quantity'), render: (row) => formatNumber(row.quantity) },
+                                      { key: 'scrapAllowancePct', label: t('manufacturing.scrapAllowancePct'), render: (row) => formatNumber(row.scrapAllowancePct) }
+                                    ]}
+                                  />
+                                </div>
+                              ) : null}
+                            </div>
+                          ) : null}
+
+                          {itemDetailTab === 'transactions' ? (
+                            <div className="subpanel">
+                              <div className="panel__header">
+                                <div>
+                                  <h2>{t('master.transactionHistoryTitle')}</h2>
+                                </div>
+                              </div>
+                              <Table
+                                rowKey="inventoryTransactionId"
+                                rows={inventoryDetail.transactions ?? []}
+                                emptyMessage={t('common.noRecords')}
+                                columns={[
+                                  { key: 'createdAt', label: t('common.date'), render: (row) => formatAppDateTime(row.createdAt) },
+                                  { key: 'transactionType', label: t('common.type') },
+                                  { key: 'locationCode', label: t('overview.locationCode'), render: (row) => row.locationCode || t('common.notSet') },
+                                  { key: 'lotNumber', label: t('common.lot'), render: (row) => row.lotNumber || t('common.notSet') },
+                                  { key: 'serialNumber', label: t('common.serial'), render: (row) => row.serialNumber || t('common.notSet') },
+                                  { key: 'quantityDelta', label: t('counts.delta'), render: (row) => formatSignedNumber(row.quantityDelta) },
+                                  {
+                                    key: 'referenceType',
+                                    label: t('common.reference'),
+                                    render: (row) => (row.referenceId ? `${row.referenceType} ${row.referenceId.slice(0, 8)}` : row.referenceType || t('common.notSet'))
+                                  },
+                                  { key: 'createdByName', label: t('common.createdBy'), render: (row) => row.createdByName || t('common.notSet') }
+                                ]}
+                              />
+                            </div>
+                          ) : null}
+
+                          {itemDetailTab === 'lots' ? (
+                            <div className="subpanel">
+                              <div className="panel__header">
+                                <div>
+                                  <h2>{t('master.lotsTitle')}</h2>
+                                </div>
+                              </div>
+                              <Table
+                                rowKey="lotId"
+                                rows={inventoryDetail.lots ?? []}
+                                emptyMessage={t('common.noRecords')}
+                                columns={[
+                                  { key: 'lotNumber', label: t('common.lot') },
+                                  { key: 'supplierLotNumber', label: t('master.supplierLot'), render: (row) => row.supplierLotNumber || t('common.notSet') },
+                                  { key: 'quantityOnHand', label: t('common.onHand'), render: (row) => formatNumber(row.quantityOnHand) },
+                                  { key: 'quantityAvailable', label: t('common.available'), render: (row) => formatNumber(row.quantityAvailable) },
+                                  { key: 'activeLocationCount', label: t('master.locationCount'), render: (row) => formatNumber(row.activeLocationCount) },
+                                  { key: 'expirationDate', label: t('master.expiration'), render: (row) => formatAppDate(row.expirationDate) }
+                                ]}
+                              />
+                            </div>
+                          ) : null}
+
+                          {itemDetailTab === 'serials' ? (
+                            <div className="subpanel">
+                              <div className="panel__header">
+                                <div>
+                                  <h2>{t('master.serialsTitle')}</h2>
+                                </div>
+                              </div>
+                              <Table
+                                rowKey="serialId"
+                                rows={inventoryDetail.serials ?? []}
+                                emptyMessage={t('common.noRecords')}
+                                columns={[
+                                  { key: 'serialNumber', label: t('common.serial') },
+                                  { key: 'status', label: t('common.status'), render: (row) => <Badge value={row.status} t={t} /> },
+                                  { key: 'currentLocationCode', label: t('master.currentLocation'), render: (row) => row.currentLocationCode || t('common.notSet') },
+                                  { key: 'quantityAvailable', label: t('common.available'), render: (row) => formatNumber(row.quantityAvailable) },
+                                  { key: 'createdAt', label: t('common.created'), render: (row) => formatAppDate(row.createdAt) }
+                                ]}
+                              />
+                            </div>
+                          ) : null}
                         </div>
-                        <Table
-                          rowKey="inventoryTransactionId"
-                          rows={inventoryDetail.transactions ?? []}
-                          emptyMessage={t('common.noRecords')}
-                          columns={[
-                            { key: 'createdAt', label: t('common.date'), render: (row) => formatAppDateTime(row.createdAt) },
-                            { key: 'transactionType', label: t('common.type') },
-                            { key: 'locationCode', label: t('overview.locationCode'), render: (row) => row.locationCode || t('common.notSet') },
-                            { key: 'lotNumber', label: t('common.lot'), render: (row) => row.lotNumber || t('common.notSet') },
-                            { key: 'serialNumber', label: t('common.serial'), render: (row) => row.serialNumber || t('common.notSet') },
-                            { key: 'quantityDelta', label: t('counts.delta'), render: (row) => formatSignedNumber(row.quantityDelta) },
-                            {
-                              key: 'referenceType',
-                              label: t('common.reference'),
-                              render: (row) => (row.referenceId ? `${row.referenceType} ${row.referenceId.slice(0, 8)}` : row.referenceType || t('common.notSet'))
-                            },
-                            { key: 'createdByName', label: t('common.createdBy'), render: (row) => row.createdByName || t('common.notSet') }
-                          ]}
-                        />
+                      </>
+                    ) : (
+                      <div className="detail-card inventory-shell__placeholder">
+                        <h3>{t('master.selectItemTitle')}</h3>
+                        <p>{t('master.selectItemDescription')}</p>
                       </div>
-                    ) : null}
-
-                    {itemDetailTab === 'lots' ? (
-                      <div className="subpanel">
-                        <div className="panel__header">
-                          <div>
-                            <h2>{t('master.lotsTitle')}</h2>
-                            <p>{t('master.lotsDescription')}</p>
-                          </div>
-                        </div>
-                        <Table
-                          rowKey="lotId"
-                          rows={inventoryDetail.lots ?? []}
-                          emptyMessage={t('common.noRecords')}
-                          columns={[
-                            { key: 'lotNumber', label: t('common.lot') },
-                            { key: 'supplierLotNumber', label: t('master.supplierLot'), render: (row) => row.supplierLotNumber || t('common.notSet') },
-                            { key: 'quantityOnHand', label: t('common.onHand'), render: (row) => formatNumber(row.quantityOnHand) },
-                            { key: 'quantityAvailable', label: t('common.available'), render: (row) => formatNumber(row.quantityAvailable) },
-                            { key: 'activeLocationCount', label: t('master.locationCount'), render: (row) => formatNumber(row.activeLocationCount) },
-                            { key: 'expirationDate', label: t('master.expiration'), render: (row) => formatAppDate(row.expirationDate) }
-                          ]}
-                        />
-                      </div>
-                    ) : null}
-
-                    {itemDetailTab === 'serials' ? (
-                      <div className="subpanel">
-                        <div className="panel__header">
-                          <div>
-                            <h2>{t('master.serialsTitle')}</h2>
-                            <p>{t('master.serialsDescription')}</p>
-                          </div>
-                        </div>
-                        <Table
-                          rowKey="serialId"
-                          rows={inventoryDetail.serials ?? []}
-                          emptyMessage={t('common.noRecords')}
-                          columns={[
-                            { key: 'serialNumber', label: t('common.serial') },
-                            { key: 'status', label: t('common.status'), render: (row) => <Badge value={row.status} t={t} /> },
-                            { key: 'currentLocationCode', label: t('master.currentLocation'), render: (row) => row.currentLocationCode || t('common.notSet') },
-                            { key: 'quantityAvailable', label: t('common.available'), render: (row) => formatNumber(row.quantityAvailable) },
-                            { key: 'createdAt', label: t('common.created'), render: (row) => formatAppDate(row.createdAt) }
-                          ]}
-                        />
-                      </div>
-                    ) : null}
-
+                    )}
                   </div>
-                ) : null}
+                </div>
               </div>
             ) : null}
 

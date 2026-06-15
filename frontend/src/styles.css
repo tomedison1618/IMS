@@ -81,17 +81,168 @@ button {
 }
 
 .app-shell {
-  grid-template-columns: 280px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   min-height: 100vh;
 }
 
-.sidebar {
-  border-right: 1px solid var(--line);
-  background: linear-gradient(180deg, rgba(7, 12, 22, 0.98), rgba(10, 17, 29, 0.94));
-  padding: 20px 18px;
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  padding: 12px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  background: linear-gradient(180deg, rgba(7, 12, 22, 0.8), rgba(10, 17, 29, 0.6));
+  backdrop-filter: blur(16px);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+}
+
+.topbar__left,
+.topbar__right {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.topbar__settings {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.topbar__brand,
+.topbar__actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.topbar__brand {
+  min-width: 0;
+}
+
+.topbar__brand .brand__logo {
+  width: 108px;
+  margin-bottom: 0;
+}
+
+.topbar__brand-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.topbar__brand-copy strong {
+  font-size: 0.96rem;
+  line-height: 1.15;
+}
+
+.topbar__nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-left: 12px;
+}
+
+.topbar__nav-button {
+  min-height: 38px;
+  padding: 8px 14px;
+  border-radius: 14px;
+  white-space: nowrap;
+}
+
+.topbar__field {
+  width: min(160px, 100%);
+  margin-bottom: 0;
+}
+
+.topbar__field--compact {
+  width: 130px;
+}
+
+.nav-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.nav-dropdown__menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 8px;
+  background: linear-gradient(145deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98));
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  padding: 8px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 4px;
+  min-width: 180px;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px);
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 30;
+}
+
+.nav-dropdown:hover .nav-dropdown__menu,
+.nav-dropdown:focus-within .nav-dropdown__menu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.nav-dropdown__item {
+  text-align: left;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: transparent;
+  border: none;
+  color: #e6edf6;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease;
+  font-size: 0.9rem;
+}
+
+.nav-dropdown__item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.nav-dropdown__item--active {
+  background: rgba(59, 130, 246, 0.15);
+  color: #7dc2ff;
+  font-weight: 600;
+}
+
+.topbar__session {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding-left: 12px;
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.session-card__meta {
+  display: grid;
+  justify-items: end;
+  text-align: right;
+}
+
+.topbar__session .session-card__chips {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.topbar__actions {
+  display: flex;
+  flex-wrap: nowrap;
 }
 
 .brand__eyebrow,
@@ -380,7 +531,13 @@ button {
 .hero {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: start;
-  gap: 10px;
+  gap: 16px;
+  padding: 24px 32px;
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.4), rgba(15, 23, 42, 0.6));
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  margin-bottom: 8px;
 }
 
 .hero--compact {
@@ -480,6 +637,19 @@ button {
   min-width: 0;
   align-content: start;
   overflow: hidden;
+}
+
+.metric {
+  transition: transform 200ms ease, box-shadow 200ms ease, background 200ms ease, border-color 200ms ease;
+  background: linear-gradient(145deg, rgba(30, 41, 59, 0.6), rgba(15, 23, 42, 0.8));
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.metric:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4);
+  background: linear-gradient(145deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.95));
+  border-color: rgba(148, 163, 184, 0.3);
 }
 
 .toast {
@@ -633,7 +803,7 @@ button {
     grid-template-columns: 1fr;
   }
 
-  .sidebar {
+  .topbar {
     border-right: none;
     border-bottom: 1px solid var(--line);
   }
@@ -641,7 +811,7 @@ button {
 
 @media (max-width: 768px) {
   .content,
-  .sidebar {
+  .topbar {
     padding: 14px;
   }
 
