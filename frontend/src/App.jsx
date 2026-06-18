@@ -109,7 +109,6 @@ const TEXT = {
     'nav.counts': 'Counts',
     'nav.manufacturing': 'Manufacturing',
     'nav.users': 'Users',
-    'nav.more': 'More',
     'users.directoryTitle': 'User Directory',
     'users.directoryDescription': 'Admin-only list of IMS users and their current roles.',
     'users.createTitle': 'Create User',
@@ -295,6 +294,10 @@ const TEXT = {
     'master.currentLocation': 'Current location',
     'inbound.purchaseOrdersTitle': 'Purchase Orders',
     'inbound.purchaseOrdersDescription': 'Create, line, and approve procurement orders.',
+    'inbound.purchaseOrderWorkspaceTitle': 'Purchase order workspace',
+    'inbound.purchaseOrderWorkspaceDescription': 'Create a PO, add lines, then inspect the selected order in the detail pane.',
+    'inbound.purchaseOrderSummaryTitle': 'Selected purchase order',
+    'inbound.purchaseOrderLinesTitle': 'Purchase order lines',
     'inbound.expectedReceipt': 'Expected receipt',
     'inbound.createPo': 'Create PO',
     'inbound.approveSelectedPo': 'Approve selected PO',
@@ -321,6 +324,8 @@ const TEXT = {
     'inbound.autoReceiptNote': 'If no receipt is selected, the app will create one for the selected PO.',
     'inbound.recentPurchaseOrdersTitle': 'Recent Purchase Orders',
     'inbound.recentPurchaseOrdersDescription': 'Select one to set the receipt context.',
+    'inbound.selectPurchaseOrderTitle': 'Select a purchase order',
+    'inbound.selectPurchaseOrderDescription': 'Choose a purchase order from the list to review status, dates, and line items.',
     'inbound.po': 'PO',
     'inbound.expected': 'Expected',
     'inbound.recentReceiptsTitle': 'Recent Receipts',
@@ -582,7 +587,6 @@ const TEXT = {
     'nav.counts': 'Kiểm kê',
     'nav.manufacturing': 'Sản xuất',
     'nav.users': 'Người dùng',
-    'nav.more': 'Khác',
     'users.directoryTitle': 'Danh sách người dùng',
     'users.directoryDescription': 'Danh sách người dùng IMS và vai trò hiện tại, chỉ dành cho quản trị.',
     'users.createTitle': 'Tạo người dùng',
@@ -772,6 +776,10 @@ const TEXT = {
     'master.currentLocation': 'Vị trí hiện tại',
     'inbound.purchaseOrdersTitle': 'Đơn mua hàng',
     'inbound.purchaseOrdersDescription': 'Tạo, thêm dòng và phê duyệt đơn mua.',
+    'inbound.purchaseOrderWorkspaceTitle': 'Khu vực làm việc đơn mua',
+    'inbound.purchaseOrderWorkspaceDescription': 'Tạo đơn mua, thêm dòng, rồi xem chi tiết đơn đang chọn ở khung bên phải.',
+    'inbound.purchaseOrderSummaryTitle': 'Đơn mua đang chọn',
+    'inbound.purchaseOrderLinesTitle': 'Dòng đơn mua',
     'inbound.expectedReceipt': 'Ngày nhận dự kiến',
     'inbound.createPo': 'Tạo đơn mua',
     'inbound.approveSelectedPo': 'Duyệt đơn mua đã chọn',
@@ -798,6 +806,8 @@ const TEXT = {
     'inbound.autoReceiptNote': 'Nếu chưa chọn phiếu nhập, ứng dụng sẽ tự tạo một phiếu cho đơn mua đã chọn.',
     'inbound.recentPurchaseOrdersTitle': 'Đơn mua gần đây',
     'inbound.recentPurchaseOrdersDescription': 'Chọn một đơn để đặt ngữ cảnh nhận hàng.',
+    'inbound.selectPurchaseOrderTitle': 'Chọn đơn mua',
+    'inbound.selectPurchaseOrderDescription': 'Chọn một đơn mua trong danh sách để xem trạng thái, ngày và các dòng mặt hàng.',
     'inbound.po': 'Đơn mua',
     'inbound.expected': 'Dự kiến',
     'inbound.recentReceiptsTitle': 'Phiếu nhập gần đây',
@@ -1022,7 +1032,6 @@ const TEXT = {
 };
 
 const NAV = ['master', 'purchaseOrders', 'receiving', 'fulfillment', 'counts', 'manufacturing'];
-const PRIMARY_TOP_NAV = ['master', 'receiving', 'manufacturing'];
 const ROLE_LABEL_KEYS = {
   ADMIN: 'role.admin',
   FINANCE: 'role.finance',
@@ -1543,9 +1552,6 @@ export default function App() {
     return Object.keys(ROLE_LABEL_KEYS);
   }, []);
   const navItems = useMemo(() => adminVisible ? [...NAV, 'users'] : NAV, [adminVisible]);
-  const primaryTopNavItems = useMemo(() => navItems.filter((item) => PRIMARY_TOP_NAV.includes(item)), [navItems]);
-  const secondaryTopNavItems = useMemo(() => navItems.filter((item) => !PRIMARY_TOP_NAV.includes(item)), [navItems]);
-
   useEffect(() => {
     window.localStorage.removeItem('ims-front-session');
   }, [session]);
@@ -1917,74 +1923,6 @@ export default function App() {
     return bomDetail?.lines?.find((line) => line.bomLineId === selected.bomLineId) ?? null;
   }, [bomDetail, selected.bomLineId]);
   const showBomSecondaryPane = bomWorkspaceMode === 'create' || Boolean(bomDetail);
-  const sectionHeroContent = useMemo(() => {
-    if (section === 'overview') {
-      return {
-        title: t('hero.title'),
-        description: t('hero.description')
-      };
-    }
-
-    if (section === 'master') {
-      return {
-        title: t('nav.master'),
-        description: ''
-      };
-    }
-
-    if (section === 'purchaseOrders') {
-      return {
-        title: t('nav.purchaseOrders'),
-        description: ''
-      };
-    }
-
-    if (section === 'receiving') {
-      return {
-        title: t('nav.receiving'),
-        description: ''
-      };
-    }
-
-    if (section === 'fulfillment') {
-      return {
-        title: t('nav.fulfillment'),
-        description: ''
-      };
-    }
-
-    if (section === 'counts') {
-      return {
-        title: t('nav.counts'),
-        description: ''
-      };
-    }
-
-    if (section === 'manufacturing') {
-      return {
-        title: manufacturingTab === 'bom' ? t('manufacturing.bomWorkspaceTitle') : t('manufacturing.productionTitle'),
-        description: manufacturingTab === 'bom' ? t('manufacturing.useBomWorkspaceHint') : ''
-      };
-    }
-
-    if (section === 'users') {
-      return {
-        title: t('nav.users'),
-        description: t('users.directoryDescription')
-      };
-    }
-
-    return {
-      title: t('hero.title'),
-      description: t('hero.description')
-    };
-  }, [manufacturingTab, section, t]);
-  const heroTitle = useMemo(() => {
-    return sectionHeroContent.title;
-  }, [sectionHeroContent]);
-  const heroDescription = useMemo(() => {
-    return sectionHeroContent.description;
-  }, [sectionHeroContent]);
 
   function applyBomDetails(bom) {
     setBomDetail(bom);
@@ -3331,23 +3269,24 @@ export default function App() {
   return (
     <div className="app-shell">
       <div className="topbar">
-        <div className="topbar__left">
-          <div
-            className="topbar__brand"
-            role="button"
-            tabIndex={0}
-            onClick={() => setSection('overview')}
-            onKeyDown={(e) => e.key === 'Enter' && setSection('overview')}
-            style={{ cursor: 'pointer', outline: 'none' }}
-          >
-            <PostefLogo />
-            <div className="topbar__brand-copy">
-              <strong>{t('brand.title')}</strong>
-            </div>
+        <div
+          className="topbar__brand"
+          role="button"
+          tabIndex={0}
+          onClick={() => setSection('overview')}
+          onKeyDown={(e) => e.key === 'Enter' && setSection('overview')}
+          style={{ cursor: 'pointer', outline: 'none' }}
+        >
+          <PostefLogo className="brand__logo brand__logo--topbar" />
+          <div className="topbar__brand-copy">
+            <span className="brand__eyebrow">{t('brand.eyebrow')}</span>
+            <strong>{t('brand.title')}</strong>
           </div>
+        </div>
 
+        <div className="topbar__nav-shell">
           <div className="topbar__nav">
-            {primaryTopNavItems.map((item) => (
+            {navItems.map((item) => (
               <button
                 key={item}
                 type="button"
@@ -3357,26 +3296,6 @@ export default function App() {
                 {t(`nav.${item}`)}
               </button>
             ))}
-
-            {secondaryTopNavItems.length ? (
-              <div className="nav-dropdown">
-                <button type="button" className={secondaryTopNavItems.includes(section) ? 'button topbar__nav-button' : 'button button--ghost topbar__nav-button'}>
-                  {t('nav.more')} ▾
-                </button>
-                <div className="nav-dropdown__menu">
-                  {secondaryTopNavItems.map((item) => (
-                    <button
-                      key={item}
-                      type="button"
-                      className={section === item ? 'nav-dropdown__item nav-dropdown__item--active' : 'nav-dropdown__item'}
-                      onClick={() => setSection(item)}
-                    >
-                      {t(`nav.${item}`)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : null}
           </div>
         </div>
 
@@ -3392,7 +3311,7 @@ export default function App() {
               </select>
             </label>
 
-            <label className="field topbar__field topbar__field--compact">
+            <label className="field topbar__field topbar__field--compact topbar__field--narrow">
               <select value={language} onChange={(event) => setLanguage(event.target.value)}>
                 <option value="en">{t('language.en')}</option>
                 <option value="vi">{t('language.vi')}</option>
@@ -3400,50 +3319,25 @@ export default function App() {
             </label>
           </div>
 
-          <div className="topbar__session">
-            <div className="session-card__meta">
-              <span>{data.me ? `${data.me.firstName} ${data.me.lastName}` : t('sidebar.user')}</span>
-              <small>{data.me?.email ?? session.userId}</small>
-            </div>
-            <div className="session-card__chips">
-              {(data.me?.roles ?? []).map((role) => (
-                <span key={role.roleId ?? role.roleCode} className="chip">
-                  {getRoleLabel(t, role.roleCode)}
-                </span>
-              ))}
-            </div>
-          </div>
-
           <div className="topbar__actions">
-            <button type="button" className="button button--ghost" onClick={() => setSession((current) => current ? { ...current } : current)}>
-              {t('sidebar.refresh')}
-            </button>
-            <button type="button" className="button button--ghost" onClick={logout}>
-              {t('sidebar.logout')}
+            <button
+              type="button"
+              className="button button--ghost topbar__icon-button"
+              onClick={logout}
+              aria-label={t('sidebar.logout')}
+              title={t('sidebar.logout')}
+            >
+              <svg viewBox="0 0 20 20" aria-hidden="true">
+                <path d="M8 4.6H5.9A1.9 1.9 0 0 0 4 6.5v7a1.9 1.9 0 0 0 1.9 1.9H8" />
+                <path d="M11.4 6.5 15 10l-3.6 3.5" />
+                <path d="M7.8 10H15" />
+              </svg>
             </button>
           </div>
         </div>
       </div>
 
       <main className="content">
-        <header className={section === 'manufacturing' ? 'hero hero--compact' : 'hero'}>
-          <div className={section === 'manufacturing' ? 'hero__body hero__body--compact' : 'hero__body'}>
-            <h2>{heroTitle}</h2>
-            {section === 'manufacturing' ? (
-              <p className={heroDescription ? 'hero__description' : 'hero__description hero__description--placeholder'}>
-                {heroDescription || 'placeholder'}
-              </p>
-            ) : heroDescription ? (
-              <p className="hero__description">{heroDescription}</p>
-            ) : null}
-          </div>
-
-          <div className={section === 'manufacturing' ? 'toast toast--compact' : 'toast'}>
-            <strong>{busy ? actionLabel(busy) : t('toast.status')}</strong>
-            <span>{busy ? t('message.workingOn', { action: actionLabel(busy) }) : message}</span>
-          </div>
-        </header>
-
         {section === 'overview' ? (
           <div className="stack">
             <section className="metrics-grid">
@@ -4102,61 +3996,120 @@ export default function App() {
           </div>
         ) : null}
         {section === 'purchaseOrders' ? (
-          <div className="stack">
-            <div className="panel">
-              <div className="panel__header">
-                <div>
-                  <h2>{t('inbound.purchaseOrdersTitle')}</h2>
-                  <p>{t('inbound.purchaseOrdersDescription')}</p>
-                </div>
+          <div className="panel">
+            <div className="panel__header">
+              <div>
+                <h2>{t('inbound.recentPurchaseOrdersTitle')}</h2>
+                <p>{t('inbound.purchaseOrderWorkspaceDescription')}</p>
               </div>
-              <div className="form-grid">
-                <label className="field">
-                  <span>{t('common.supplier')}</span>
-                  <select value={forms.purchaseOrder.supplierId} onChange={(event) => updateForm('purchaseOrder', 'supplierId', event.target.value)}>
-                    <option value="">{t('common.selectSupplier')}</option>
-                    {data.suppliers.map((supplier) => <option key={supplier.supplierId} value={supplier.supplierId}>{supplier.supplierCode} - {supplier.supplierName}</option>)}
-                  </select>
-                </label>
-                <label className="field"><span>{t('inbound.expectedReceipt')}</span><input type="date" value={forms.purchaseOrder.expectedReceiptDate} onChange={(event) => updateForm('purchaseOrder', 'expectedReceiptDate', event.target.value)} /></label>
-              </div>
-              <div className="button-row">
-                <button type="button" className="button" onClick={createPurchaseOrder}>{t('inbound.createPo')}</button>
-                <button type="button" className="button button--secondary" onClick={approvePurchaseOrder}>{t('inbound.approveSelectedPo')}</button>
-              </div>
-              <div className="form-grid">
-                <label className="field">
-                  <span>{t('common.item')}</span>
-                  <select value={forms.purchaseOrderLine.itemId} onChange={(event) => updateForm('purchaseOrderLine', 'itemId', event.target.value)}>
-                    <option value="">{t('common.selectItem')}</option>
-                    {data.items.map((item) => <option key={item.itemId} value={item.itemId}>{item.internalSku} - {item.name}</option>)}
-                  </select>
-                </label>
-                <label className="field"><span>{t('common.qty')}</span><input value={forms.purchaseOrderLine.orderedQty} onChange={(event) => updateForm('purchaseOrderLine', 'orderedQty', event.target.value)} /></label>
-              </div>
-              <button type="button" className="button button--ghost" onClick={addPurchaseOrderLine}>{t('inbound.addPoLine')}</button>
             </div>
+            <div className="inventory-shell">
+              <div className="inventory-shell__list">
+                <Table
+                  rowKey="purchaseOrderId"
+                  rows={data.purchaseOrders}
+                  selectedId={selected.purchaseOrderId}
+                  emptyMessage={t('common.noRecords')}
+                  onPick={(row) => setSelected((current) => ({ ...current, purchaseOrderId: row.purchaseOrderId }))}
+                  columns={[
+                    { key: 'poNumber', label: t('inbound.po') },
+                    { key: 'supplierName', label: t('common.supplier') },
+                    { key: 'status', label: t('common.status'), render: (row) => <Badge value={row.status} t={t} /> },
+                    { key: 'expectedReceiptDate', label: t('inbound.expected'), render: (row) => formatAppDate(row.expectedReceiptDate) },
+                    { key: 'lineCount', label: t('common.quantity'), render: (row) => formatNumber(row.lineCount ?? 0) }
+                  ]}
+                />
+              </div>
+              <div className="inventory-shell__aside">
+                <div className="stack inventory-shell__detail">
+                  <div className="subpanel">
+                    <div className="panel__header">
+                      <div>
+                        <h2>{t('inbound.purchaseOrderWorkspaceTitle')}</h2>
+                        <p>{t('inbound.purchaseOrdersDescription')}</p>
+                      </div>
+                    </div>
+                    <div className="form-grid">
+                      <label className="field">
+                        <span>{t('common.supplier')}</span>
+                        <select value={forms.purchaseOrder.supplierId} onChange={(event) => updateForm('purchaseOrder', 'supplierId', event.target.value)}>
+                          <option value="">{t('common.selectSupplier')}</option>
+                          {data.suppliers.map((supplier) => <option key={supplier.supplierId} value={supplier.supplierId}>{supplier.supplierCode} - {supplier.supplierName}</option>)}
+                        </select>
+                      </label>
+                      <label className="field"><span>{t('inbound.expectedReceipt')}</span><input type="date" value={forms.purchaseOrder.expectedReceiptDate} onChange={(event) => updateForm('purchaseOrder', 'expectedReceiptDate', event.target.value)} /></label>
+                    </div>
+                    <div className="button-row">
+                      <button type="button" className="button" onClick={createPurchaseOrder}>{t('inbound.createPo')}</button>
+                      <button type="button" className="button button--secondary" onClick={approvePurchaseOrder} disabled={!selected.purchaseOrderId}>{t('inbound.approveSelectedPo')}</button>
+                    </div>
+                    <div className="form-grid">
+                      <label className="field">
+                        <span>{t('common.item')}</span>
+                        <select value={forms.purchaseOrderLine.itemId} onChange={(event) => updateForm('purchaseOrderLine', 'itemId', event.target.value)}>
+                          <option value="">{t('common.selectItem')}</option>
+                          {data.items.map((item) => <option key={item.itemId} value={item.itemId}>{item.internalSku} - {item.name}</option>)}
+                        </select>
+                      </label>
+                      <label className="field"><span>{t('common.qty')}</span><input value={forms.purchaseOrderLine.orderedQty} onChange={(event) => updateForm('purchaseOrderLine', 'orderedQty', event.target.value)} /></label>
+                    </div>
+                    <button type="button" className="button button--ghost" onClick={addPurchaseOrderLine} disabled={!selected.purchaseOrderId || !forms.purchaseOrderLine.itemId}>{t('inbound.addPoLine')}</button>
+                  </div>
 
-            <div className="panel">
-              <div className="panel__header">
-                <div>
-                  <h2>{t('inbound.recentPurchaseOrdersTitle')}</h2>
-                  <p>{t('inbound.recentPurchaseOrdersDescription')}</p>
+                  {purchaseOrderDetail ? (
+                    <div className="subpanel stack">
+                      <div className="panel__header">
+                        <div>
+                          <h2>{t('inbound.purchaseOrderSummaryTitle')}</h2>
+                          <p>{purchaseOrderDetail.poNumber} - {purchaseOrderDetail.supplierName}</p>
+                        </div>
+                      </div>
+                      <div className="bom-stat-grid">
+                        <div className="detail-card bom-stat">
+                          <span>{t('common.status')}</span>
+                          <strong>{purchaseOrderDetail.status}</strong>
+                          <small>{t('common.updated')}: {formatAppDate(purchaseOrderDetail.updatedAt ?? purchaseOrderDetail.createdAt)}</small>
+                        </div>
+                        <div className="detail-card bom-stat">
+                          <span>{t('inbound.expected')}</span>
+                          <strong>{formatAppDate(purchaseOrderDetail.expectedReceiptDate)}</strong>
+                          <small>{t('common.created')}: {formatAppDate(purchaseOrderDetail.orderDate)}</small>
+                        </div>
+                        <div className="detail-card bom-stat">
+                          <span>{t('common.quantity')}</span>
+                          <strong>{formatNumber(purchaseOrderDetail.lineCount ?? purchaseOrderDetail.lines?.length ?? 0)}</strong>
+                          <small>{t('inbound.purchaseOrderLinesTitle')}</small>
+                        </div>
+                      </div>
+                      <div className="subpanel">
+                        <div className="panel__header">
+                          <div>
+                            <h2>{t('inbound.purchaseOrderLinesTitle')}</h2>
+                          </div>
+                        </div>
+                        <Table
+                          rowKey="purchaseOrderLineId"
+                          rows={purchaseOrderDetail.lines ?? []}
+                          emptyMessage={t('common.noRecords')}
+                          columns={[
+                            { key: 'lineNumber', label: t('manufacturing.lineNumber') },
+                            { key: 'internalSku', label: t('common.sku') },
+                            { key: 'itemName', label: t('common.name') },
+                            { key: 'orderedQty', label: t('common.qty'), render: (row) => formatNumber(row.orderedQty) },
+                            { key: 'receivedQty', label: t('inbound.receivedQty'), render: (row) => formatNumber(row.receivedQty) },
+                            { key: 'unitCost', label: t('master.unitCost'), render: (row) => formatAppMoney(row.unitCost, purchaseOrderDetail.currencyCode) }
+                          ]}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="detail-card inventory-shell__placeholder">
+                      <h3>{t('inbound.selectPurchaseOrderTitle')}</h3>
+                      <p>{t('inbound.selectPurchaseOrderDescription')}</p>
+                    </div>
+                  )}
                 </div>
               </div>
-              <Table
-                rowKey="purchaseOrderId"
-                rows={data.purchaseOrders}
-                selectedId={selected.purchaseOrderId}
-                emptyMessage={t('common.noRecords')}
-                onPick={(row) => setSelected((current) => ({ ...current, purchaseOrderId: row.purchaseOrderId }))}
-                columns={[
-                  { key: 'poNumber', label: t('inbound.po') },
-                  { key: 'supplierName', label: t('common.supplier') },
-                  { key: 'status', label: t('common.status'), render: (row) => <Badge value={row.status} t={t} /> },
-                  { key: 'expectedReceiptDate', label: t('inbound.expected'), render: (row) => formatAppDate(row.expectedReceiptDate) }
-                ]}
-              />
             </div>
           </div>
         ) : null}

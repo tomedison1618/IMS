@@ -1,1 +1,5 @@
 /runtime/node.exe
+/dist/
+/frontend/dist/
+/.ims-app.pid
+/.ims-demo.pid
