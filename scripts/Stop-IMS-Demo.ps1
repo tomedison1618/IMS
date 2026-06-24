@@ -10,18 +10,18 @@ if (-not (Test-Path $pidFile)) {
     exit 0
 }
 
-$pid = Get-Content -Path $pidFile -ErrorAction Stop | Select-Object -First 1
-if (-not $pid) {
+$pidValue = Get-Content -Path $pidFile -ErrorAction Stop | Select-Object -First 1
+if (-not $pidValue) {
     Remove-Item -Path $pidFile -Force -ErrorAction SilentlyContinue
     Write-Host 'IMS Demo PID file was empty.'
     exit 0
 }
 
 try {
-    Stop-Process -Id ([int]$pid) -Force -ErrorAction Stop
-    Write-Host "Stopped IMS Demo process $pid."
+    Stop-Process -Id ([int]$pidValue) -Force -ErrorAction Stop
+    Write-Host "Stopped IMS Demo process $pidValue."
 } catch {
-    Write-Warning "Could not stop process $pid. It may have already exited."
+    Write-Warning "Could not stop process $pidValue. It may have already exited."
 }
 
 Remove-Item -Path $pidFile -Force -ErrorAction SilentlyContinue

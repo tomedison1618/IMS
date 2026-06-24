@@ -14,7 +14,15 @@ const currentDir = path.dirname(currentFile);
 const frontendDistDir = path.resolve(currentDir, '..', 'frontend', 'dist');
 const frontendIndexFile = path.join(frontendDistDir, 'index.html');
 
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        upgradeInsecureRequests: null
+      }
+    }
+  })
+);
 app.use(express.json({ limit: '1mb' }));
 app.use(morgan('dev'));
 app.use(attachRequestContext);
