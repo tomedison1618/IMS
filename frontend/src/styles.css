@@ -530,16 +530,26 @@ button {
 }
 
 .inventory-shell__list,
+.inventory-shell__aside,
 .inventory-shell__detail,
 .inventory-shell__placeholder {
   min-width: 0;
 }
 
-.inventory-shell__detail {
+.inventory-shell__aside {
   position: sticky;
   top: 20px;
   max-height: calc(100vh - 120px);
   overflow: auto;
+  display: grid;
+  gap: 14px;
+  align-content: start;
+}
+
+.inventory-shell__detail {
+  position: static;
+  max-height: none;
+  overflow: visible;
 }
 
 .inventory-shell__placeholder {
@@ -751,6 +761,12 @@ button {
 
   .topbar__nav-shell {
     order: 3;
+  }
+
+  .inventory-shell__aside {
+    position: static;
+    max-height: none;
+    overflow: visible;
   }
 
   .topbar__nav {
