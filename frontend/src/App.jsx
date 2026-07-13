@@ -3545,7 +3545,8 @@ export default function App() {
                           ) : null}
                         </div>
 
-                        <div ref={inventoryWorkspaceRef} className="subpanel stack inventory-workspace">
+                        {!isEditingSelectedItem ? (
+                          <div ref={inventoryWorkspaceRef} className="subpanel stack inventory-workspace">
                           <div className="toggle-row">
                             <button
                               type="button"
@@ -3793,7 +3794,8 @@ export default function App() {
                               />
                             </div>
                           ) : null}
-                        </div>
+                          </div>
+                        ) : null}
                       </>
                     ) : (
                       <div className="detail-card inventory-shell__placeholder">
